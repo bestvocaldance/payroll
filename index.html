@@ -1252,6 +1252,17 @@ var PayRules = (function () {
     var bank = h('input', { type: 'text', maxlength: '30', placeholder: '예) 국민은행', autocomplete: 'off', 'aria-label': '은행' }); bank.value = pf.bank;
     var acct = h('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', placeholder: pf.hasAcct ? '등록됨 (····' + pf.acctLast4 + ') — 바꿀 때만 입력' : '계좌번호 (숫자와 -)', 'aria-label': '계좌번호' });
     var rrn = h('input', { type: 'password', inputmode: 'numeric', autocomplete: 'off', placeholder: pf.hasRrn ? '등록됨 — 바꿀 때만 입력' : '주민번호 13자리', 'aria-label': '주민번호' });
+    rrn.addEventListener('input', function () {
+      var d = rrn.value.replace(/\D/g, '').slice(0, 13);
+      rrn.value = d.length > 6 ? d.slice(0, 6) + '-' + d.slice(6) : d;
+    });
+    var eye = h('button', { class: 'btn small', type: 'button', 'aria-label': '주민번호 보기', 'aria-pressed': 'false' }, '👁 보기');
+    eye.addEventListener('click', function () {
+      var show = rrn.type === 'password';
+      rrn.type = show ? 'text' : 'password';
+      eye.textContent = show ? '🙈 가리기' : '👁 보기';
+      eye.setAttribute('aria-pressed', show ? 'true' : 'false');
+    });
     var save = h('button', { class: 'btn primary block', type: 'button' }, '저장');
     save.addEventListener('click', function () {
       showErr(err, '');
@@ -1265,7 +1276,7 @@ var PayRules = (function () {
       busyBtn(clr, function () { return api('admin.setProfile', { acctId: x.id, acct: '', rrn: '' }).then(function () { sh.close(); toast('지웠어요.'); loadAdmin(); }); }).catch(function (e) { showErr(err, errText(e)); });
     });
     sh = openSheet(x.name + ' 선생님 정보', h('div', { class: 'stack' },
-      field('분류 (급여이체표에서 묶이는 기준)', grp), field('은행', bank), field('계좌번호', acct), field('주민번호', rrn),
+      field('분류 (급여이체표에서 묶이는 기준)', grp), field('은행', bank), field('계좌번호', acct), field('주민번호', h('div', { class: 'row' }, h('div', { style: 'flex:1;min-width:150px' }, rrn), eye)),
       h('p', { class: 'tiny muted', text: '번호는 암호로 저장되고, 이 화면에는 다시 나타나지 않습니다. 선생님 화면에는 절대 보이지 않아요.' }),
       err, save, (pf.hasAcct || pf.hasRrn) ? clr : null));
   }
