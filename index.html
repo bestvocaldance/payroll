@@ -927,7 +927,7 @@ var PayRules = (function () {
     if (tab === 'overview') p = api('admin.overview', a.period ? { period: a.period } : {}).then(function (d) { a.overview = d; a.period = d.period.key; });
     else if (tab === 'detail') p = api('admin.lessons', { period: a.period, acctId: a.acctId }).then(function (d) { a.detail = d; });
     else if (tab === 'disputes') p = api('admin.disputes', { all: !!a.allDisputes }).then(function (d) { a.disputes = d.disputes; });
-    else if (tab === 'teachers') p = api('admin.teachers').then(function (d) { a.accounts = d.accounts; });
+    else if (tab === 'teachers') p = api('admin.teachers').then(function (d) { a.accounts = d.accounts; a.groups = d.groups; });
     else if (tab === 'rates') p = api('admin.rates').then(function (d) { a.rates = d; });
     else if (tab === 'settings') p = api('admin.settings').then(function (d) { a.settings = d.settings; });
     else p = Promise.resolve();
@@ -1001,7 +1001,8 @@ var PayRules = (function () {
     else box.appendChild(h('div', { class: 'card muted', text: '이 기간에 입력된 수업이 없습니다.' }));
 
     var exp = h('div', { class: 'card stack' }, h('h2', { text: '세무사님께 보낼 표' }),
-      h('p', { class: 'small muted', text: '엑셀에서 바로 열리는 CSV 파일입니다. 마감하면 구글 시트에도 "정산_' + per.key + '" 탭이 만들어집니다.' }),
+      h('p', { class: 'small muted', text: '엑셀에서 바로 열리는 CSV 파일입니다. 급여이체표에는 은행·계좌번호·주민번호가 들어가니 보관과 전달에 주의해 주세요. 마감하면 구글 시트에도 "정산_' + per.key + '" 탭이 만들어집니다(번호는 들어가지 않습니다).' }),
+      h('button', { class: 'btn primary block', type: 'button', onclick: function () { exportSheet(per.key, 'transfer'); } }, '급여이체표 (은행·계좌·주민번호 포함)'),
       h('div', { class: 'row' },
         h('button', { class: 'btn small', type: 'button', onclick: function () { exportSheet(per.key, 'summary'); } }, '강사별 합계표'),
         h('button', { class: 'btn small', type: 'button', onclick: function () { exportSheet(per.key, 'detail'); } }, '수업별 내역')));
@@ -1021,10 +1022,17 @@ var PayRules = (function () {
 
   function exportSheet(period, kind) {
     var body = h('div', { class: 'stack' }, loadingBox());
-    var sh = openSheet(kind === 'detail' ? '수업별 내역' : '강사별 합계표', body);
+    var sh = openSheet(kind === 'detail' ? '수업별 내역' : (kind === 'transfer' ? '급여이체표' : '강사별 합계표'), body);
     api('admin.export', { period: period, kind: kind }).then(function (r) {
       body.textContent = '';
-      body.appendChild(h('div', { class: 'pre', text: r.csv }));
+      if (r.sensitive) {
+        var warns = [];
+        if (r.missingInfo && r.missingInfo.length) warns.push('은행·계좌·주민번호가 비어 있는 선생님: ' + r.missingInfo.join(', ') + ' → [선생님] 탭에서 입력해 주세요.');
+        if (r.missingRate && r.missingRate.length) warns.push('수업별 급여가 없는 수업이 있는 선생님: ' + r.missingRate.join(', '));
+        if (warns.length) body.appendChild(h('div', { class: 'note stack' }, warns.map(function (t) { return h('div', { text: '• ' + t }); })));
+        body.appendChild(h('p', { class: 'tiny muted', text: '아래 미리보기는 번호를 가려서 보여 줍니다. 내려받는 파일에는 전체 번호가 들어 있어요.' }));
+      }
+      body.appendChild(h('div', { class: 'pre', text: r.preview || r.csv }));
       body.appendChild(h('div', { class: 'row' },
         h('button', { class: 'btn primary grow', type: 'button', onclick: function () { downloadText(r.filename, r.csv); } }, '파일로 내려받기'),
         h('button', { class: 'btn grow', type: 'button', onclick: function () { copyText(r.csv, '복사했어요. 엑셀·시트에 붙여 넣으세요.'); } }, '복사')));
@@ -1188,24 +1196,78 @@ var PayRules = (function () {
       }).catch(function (e) { showErr(err, errText(e)); });
     });
     box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '새 선생님 추가' }), field('이름', names), field('수업별 급여', copy), err, addBtn));
+    box.appendChild(importCard());
 
     var rows = a.accounts.map(function (x) {
       var isMe = x.id === S.session.id;
       var actions = h('div', { class: 'row' });
       if (x.status === '활성') {
+        if (x.role === 'teacher') actions.appendChild(h('button', { class: 'btn small', type: 'button', onclick: function () { profileSheet(x); } }, '분류·계좌 정보'));
         actions.appendChild(h('button', { class: 'btn small', type: 'button', onclick: function () { pinResetSheet(x); } }, '비밀번호 재설정'));
         actions.appendChild(h('button', { class: 'btn small', type: 'button', onclick: function () { renameSheet(x); } }, '이름 변경'));
         if (!isMe) actions.appendChild(h('button', { class: 'btn small danger', type: 'button', onclick: function () { retireSheet(x); } }, '퇴직 처리'));
       } else {
         actions.appendChild(h('button', { class: 'btn small', type: 'button', onclick: function (ev) { busyBtn(ev.currentTarget, function () { return api('admin.reactivate', { acctId: x.id }).then(function () { toast('다시 활성화했어요.'); loadAdmin(); }); }).catch(function (e) { toast(errText(e)); }); } }, '다시 근무'));
       }
+      var pf = x.profile, pfTags = [];
+      if (x.role === 'teacher' && x.status === '활성') {
+        pfTags.push(h('span', { class: 'tag ' + (pf && pf.group ? '' : 'warn'), text: pf && pf.group ? pf.group : '분류 없음' }));
+        pfTags.push(h('span', { class: 'tag ' + (pf && pf.bank && pf.hasAcct ? 'ok' : 'mute'), text: pf && pf.hasAcct ? (pf.bank || '은행?') + ' ····' + pf.acctLast4 : '계좌 없음' }));
+        pfTags.push(h('span', { class: 'tag ' + (pf && pf.hasRrn ? 'ok' : 'mute'), text: pf && pf.hasRrn ? '주민번호 등록됨' : '주민번호 없음' }));
+      }
       return h('div', { class: 'item', style: 'align-items:flex-start;flex-wrap:wrap' },
-        h('div', { class: 'main' }, h('b', { text: x.name }), h('span', { class: 'tiny muted', text: (x.role === 'admin' ? '관리자' : '선생님') + (x.status === '활성' ? '' : ' · 퇴직 ' + (x.retiredAt || '')) })),
+        h('div', { class: 'main' }, h('b', { text: x.name }), h('span', { class: 'tiny muted', text: (x.role === 'admin' ? '관리자' : '선생님') + (x.status === '활성' ? '' : ' · 퇴직 ' + (x.retiredAt || '')) }), pfTags.length ? h('div', { class: 'row', style: 'gap:4px;margin-top:4px' }, pfTags) : null),
         actions);
     });
     box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '계정 목록' }), h('div', { class: 'list' }, rows),
       h('p', { class: 'tiny muted', text: '퇴직 처리해도 지난 정산 기록은 그대로 남습니다. 퇴직한 선생님은 로그인할 수 없습니다.' })));
     return box;
+  }
+  function importCard() {
+    var ta = h('textarea', { rows: '6', placeholder: '엑셀 표를 그대로 복사해서 붙여 넣으세요.\n예) 보컬 / 은행·계좌·주민번호·이름이 있는 줄들 / 댄스 / ...', 'aria-label': '선생님 정보 붙여 넣기', autocomplete: 'off' });
+    var err = errBox(), out = h('div', { class: 'stack' });
+    var go = h('button', { class: 'btn primary block', type: 'button' }, '붙여 넣은 내용 저장');
+    go.addEventListener('click', function () {
+      showErr(err, ''); out.textContent = '';
+      if (!ta.value.trim()) return showErr(err, '붙여 넣을 내용이 없어요.');
+      busyBtn(go, function () {
+        return api('admin.importProfiles', { text: ta.value }).then(function (r) {
+          ta.value = '';
+          out.appendChild(h('div', { class: 'note stack' },
+            h('div', { text: r.updated + '명의 정보를 저장했어요. (번호는 암호로 저장되고, 붙여 넣은 내용은 지웠어요)' }),
+            (r.skipped || []).map(function (s) { return h('div', { text: '• ' + s.line + '번째 줄' + (s.hint ? ' (' + s.hint + ')' : '') + ': ' + s.reason }); })));
+          toast('저장했어요.'); loadAdmin();
+        });
+      }).catch(function (e) { showErr(err, errText(e)); });
+    });
+    return h('div', { class: 'card stack' }, h('h2', { text: '기존 표 붙여 넣기 (분류·은행·계좌·주민번호)' }),
+      h('p', { class: 'small muted', text: '엑셀의 표를 복사해서 붙여 넣으면 이름을 찾아 은행·계좌번호·주민번호를 채우고, "보컬", "댄스" 줄 아래 선생님은 그 분류로 정합니다. 정규직·알바 줄은 건너뜁니다. 이미 있는 정보는 새로 붙여 넣은 값으로 바뀝니다.' }),
+      ta, err, go, out);
+  }
+  function profileSheet(x) {
+    var pf = x.profile || { group: '', bank: '', acctLast4: '', hasAcct: false, hasRrn: false }, err = errBox(), sh;
+    var groups = (S.a.groups || ['보컬', '댄스', '기타']);
+    var grp = h('select', { 'aria-label': '분류' }, h('option', { value: '', text: '분류 없음' }), groups.map(function (g) { return h('option', { value: g, text: g }); }));
+    grp.value = pf.group;
+    var bank = h('input', { type: 'text', maxlength: '30', placeholder: '예) 국민은행', autocomplete: 'off', 'aria-label': '은행' }); bank.value = pf.bank;
+    var acct = h('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', placeholder: pf.hasAcct ? '등록됨 (····' + pf.acctLast4 + ') — 바꿀 때만 입력' : '계좌번호 (숫자와 -)', 'aria-label': '계좌번호' });
+    var rrn = h('input', { type: 'password', inputmode: 'numeric', autocomplete: 'off', placeholder: pf.hasRrn ? '등록됨 — 바꿀 때만 입력' : '주민번호 13자리', 'aria-label': '주민번호' });
+    var save = h('button', { class: 'btn primary block', type: 'button' }, '저장');
+    save.addEventListener('click', function () {
+      showErr(err, '');
+      var p = { acctId: x.id, group: grp.value, bank: bank.value };
+      if (acct.value.trim()) p.acct = acct.value;
+      if (rrn.value.trim()) p.rrn = rrn.value;
+      busyBtn(save, function () { return api('admin.setProfile', p).then(function () { sh.close(); toast(x.name + ' 선생님 정보를 저장했어요.'); loadAdmin(); }); }).catch(function (e) { showErr(err, errText(e)); });
+    });
+    var clr = h('button', { class: 'btn small danger', type: 'button' }, '계좌·주민번호 지우기');
+    clr.addEventListener('click', function () {
+      busyBtn(clr, function () { return api('admin.setProfile', { acctId: x.id, acct: '', rrn: '' }).then(function () { sh.close(); toast('지웠어요.'); loadAdmin(); }); }).catch(function (e) { showErr(err, errText(e)); });
+    });
+    sh = openSheet(x.name + ' 선생님 정보', h('div', { class: 'stack' },
+      field('분류 (급여이체표에서 묶이는 기준)', grp), field('은행', bank), field('계좌번호', acct), field('주민번호', rrn),
+      h('p', { class: 'tiny muted', text: '번호는 암호로 저장되고, 이 화면에는 다시 나타나지 않습니다. 선생님 화면에는 절대 보이지 않아요.' }),
+      err, save, (pf.hasAcct || pf.hasRrn) ? clr : null));
   }
   function pinResetSheet(x) {
     var body = h('div', { class: 'stack' }), err = errBox(), sh;
