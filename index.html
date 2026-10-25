@@ -59,7 +59,9 @@ body {
   font-size: 16px; line-height: 1.55; margin: 0;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 16px 48px;
+  /* 아이폰 앱 모드: 시계·배터리 영역과 아래 홈 바 영역을 비워 둡니다 */
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
 }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
