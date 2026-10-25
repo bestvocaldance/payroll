@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#FFC800">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BVD 수업체크">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>BVD 선생님 정산</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -545,6 +553,45 @@ var PayRules = (function () {
   }
   function saveSession() { store(SESSION_KEY, JSON.stringify(S.session)); }
 
+  // ===== 앱으로 설치 (홈 화면에 추가) =====
+  var installEvt = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault(); installEvt = e;
+    if (!S.session && !DEMO) render();
+  });
+  window.addEventListener('appinstalled', function () { installEvt = null; closeAllSheets(); toast('설치됐어요. 홈 화면에서 BVD 수업체크를 열어 주세요.'); if (!S.session) render(); });
+  function isStandalone() {
+    try { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; } catch (e) { return false; }
+  }
+  function installSheet() {
+    var ua = navigator.userAgent || '';
+    var inApp = /KAKAOTALK|NAVER\(inapp|Line\/|Instagram|FBAN|FBAV/i.test(ua);
+    var ios = /iPhone|iPad|iPod/i.test(ua);
+    var body = h('div', { class: 'stack' });
+    if (inApp) {
+      body.appendChild(h('div', { class: 'card flat stack' },
+        h('b', { text: '지금은 카카오톡 같은 앱 안에서 열려 있어요' }),
+        h('p', { class: 'small', text: '이 상태에서는 설치가 되지 않아요. 오른쪽 위(또는 아래) 메뉴에서 "다른 브라우저로 열기"를 눌러 ' + (ios ? 'Safari' : 'Chrome') + '에서 다시 열어 주세요.' })));
+    }
+    if (installEvt) {
+      var go = h('button', { class: 'btn primary block', type: 'button' }, '지금 설치하기');
+      go.addEventListener('click', function () {
+        var ev = installEvt; installEvt = null;
+        try { ev.prompt(); } catch (e) { toast('아래 안내대로 직접 추가해 주세요.'); }
+      });
+      body.appendChild(go);
+      body.appendChild(h('p', { class: 'tiny muted', text: '버튼이 안 되면 아래 방법으로 추가하세요.' }));
+    }
+    function steps(title, list) {
+      return h('div', { class: 'card flat stack' }, h('b', { text: title }), h('ol', { class: 'small', style: 'margin:0;padding-left:1.25em;display:grid;gap:6px' }, list.map(function (t) { return h('li', { text: t }); })));
+    }
+    var iphone = steps('아이폰 (Safari)', ['Safari에서 이 주소를 엽니다. (카카오톡 안에서 열면 안 돼요)', '아래쪽 가운데 공유 버튼(네모에 화살표)을 누릅니다.', '"홈 화면에 추가"를 누르고 오른쪽 위 "추가"를 누릅니다.']);
+    var android = steps('안드로이드 (Chrome)', ['Chrome에서 이 주소를 엽니다. (카카오톡 안에서 열면 안 돼요)', '오른쪽 위 점 세 개 메뉴(⋮)를 누릅니다.', '"앱 설치" 또는 "홈 화면에 추가"를 누르고 "설치"를 누릅니다.']);
+    if (ios) { body.appendChild(iphone); body.appendChild(android); } else { body.appendChild(android); body.appendChild(iphone); }
+    body.appendChild(h('p', { class: 'tiny muted', text: '설치하면 홈 화면에 BVD 수업체크 아이콘이 생기고, 누르면 바로 열려요. 비밀번호는 한 번 로그인하면 7일 동안 기억돼요.' }));
+    openSheet('휴대폰에 앱으로 설치', body);
+  }
+
   // ===== 로그인 =====
   function loadNames() {
     S.namesErr = '';
@@ -593,6 +640,7 @@ var PayRules = (function () {
     if (S.namesErr) card.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { loadNames(); } }, '다시 불러오기'));
     wrap.appendChild(card);
     wrap.appendChild(h('p', { class: 'tiny muted', text: '비밀번호를 잊으셨다면 원장님께 새 비밀번호를 받으세요.' }));
+    if (!isStandalone()) wrap.appendChild(h('button', { class: 'btn block', type: 'button', onclick: installSheet }, '휴대폰에 앱으로 설치하기'));
     if (DEMO) {
       var hint = DEMO.hints[S.role];
       wrap.appendChild(h('div', { class: 'card flat stack' },
