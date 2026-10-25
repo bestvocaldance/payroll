@@ -303,7 +303,7 @@ var PayRules = (function () {
     return toIntOrNull(r.fixed) !== null || toIntOrNull(r.t1) !== null || toIntOrNull(r.t2) !== null ||
       toIntOrNull(r.t3) !== null || toIntOrNull(r.t4) !== null || toIntOrNull(r.t5) !== null;
   }
-  // 개인 단가가 있으면 그것, 없으면 기본 단가("*"). 값이 모두 비어 있는 줄은 "없음"으로 봅니다.
+  // 개인 수업 급여가 있으면 그것, 없으면 기본 수업 급여("*"). 값이 모두 비어 있는 줄은 "없음"으로 봅니다.
   function resolveRate(rateRows, type, acctId) {
     if (!type) return null;
     var own = null, def = null, i;
@@ -333,7 +333,7 @@ var PayRules = (function () {
   }
 
   function fmtWon(n) {
-    if (n === null || n === undefined) return '단가 미설정';
+    if (n === null || n === undefined) return '급여 미설정';
     var s = String(Math.round(n)), out = '', c = 0, i;
     for (i = s.length - 1; i >= 0; i--) {
       out = s.charAt(i) + out; c++;
@@ -624,7 +624,7 @@ var PayRules = (function () {
         h('button', { type: 'button', 'aria-label': '인원 늘리기', onclick: function () { st.hc = Math.min(50, st.hc + 1); refresh(); } }, '+')));
     var statusBtns = f.statuses.map(function (s) {
       return h('button', { type: 'button', 'aria-pressed': 'false', onclick: function () { st.status = s.name; refresh(); } },
-        h('b', { text: s.label }), h('span', { text: s.pay ? '수업료 지급' : '지급 없음' }));
+        h('b', { text: s.label }), h('span', { text: s.pay ? '급여 지급' : '지급 없음' }));
     });
     var noteEl = h('p', { class: 'small muted' });
     var amountEl = h('div', { class: 'amount empty', 'aria-live': 'polite' });
@@ -649,7 +649,7 @@ var PayRules = (function () {
       var c = R.calcLesson(s, t.rate, t.mode === 'tiered' ? st.hc : null);
       amountEl.textContent = '';
       if (c.reason === 'need_headcount') { amountEl.className = 'amount empty'; amountEl.appendChild(h('strong', { text: '출석 인원을 입력하면 금액이 보여요' })); }
-      else if (c.reason === 'no_rate') { amountEl.className = 'amount warnbox'; amountEl.appendChild(h('small', { text: '이번 수업 금액' })); amountEl.appendChild(h('strong', { text: '단가 미설정 — 원장님이 단가를 넣으면 자동으로 채워져요' })); }
+      else if (c.reason === 'no_rate') { amountEl.className = 'amount warnbox'; amountEl.appendChild(h('small', { text: '이번 수업 금액' })); amountEl.appendChild(h('strong', { text: '급여 미설정 — 원장님이 수업별 급여를 넣으면 자동으로 채워져요' })); }
       else { amountEl.className = 'amount'; amountEl.appendChild(h('small', { text: c.pay ? '이번 수업 금액' : '이번 수업 금액 (지급 없음)' })); amountEl.appendChild(h('strong', { text: won(c.amount) })); }
     }
 
@@ -714,7 +714,7 @@ var PayRules = (function () {
       h('div', { class: 'main' },
         h('b', { text: (opts.showName ? l.name + ' · ' : '') + title }),
         h('span', { class: 'tiny muted' }, tags, l.statusLabel, l.memo ? ' · ' + l.memo : '')),
-      h('span', { class: amtCls, text: l.amount === null ? '단가 미설정' : (l.amount === 0 ? '0원' : won(l.amount)) }));
+      h('span', { class: amtCls, text: l.amount === null ? '급여 미설정' : (l.amount === 0 ? '0원' : won(l.amount)) }));
   }
   function groupedLessons(list, opts) {
     var box = h('div', { class: 'list' }), lastDate = '';
@@ -748,7 +748,7 @@ var PayRules = (function () {
         onSubmit: function (p) { return api('me.addLesson', p); },
         onDone: function (res, p, c) {
           var inPeriod = p.date >= d.period.start && p.date <= d.period.end;
-          var msg = '저장했어요 · ' + (c.amount === null ? '단가 미설정' : won(c.amount));
+          var msg = '저장했어요 · ' + (c.amount === null ? '급여 미설정' : won(c.amount));
           if (!inPeriod) msg += ' (다른 정산 기간에 저장됨)';
           toast(msg);
           loadT(d.period.key);
@@ -776,7 +776,7 @@ var PayRules = (function () {
         h('span', { class: 'small muted', text: rangeLabel(d.period) + ' 수업 · 지급일 ' + d.period.payDate.replace(/-/g, '.') }),
         h('span', { class: 'big', text: won(d.totals.amount) }),
         h('span', { class: 'small muted', text: '수업 ' + d.totals.count + '건 · 지급 대상 ' + d.totals.payCount + '건' })));
-    if (d.totals.missing) summary.appendChild(h('div', { class: 'note', text: '단가가 아직 정해지지 않은 수업이 ' + d.totals.missing + '건 있어요. 원장님이 단가를 입력하면 금액이 채워져요.' }));
+    if (d.totals.missing) summary.appendChild(h('div', { class: 'note', text: '수업별 급여가 아직 정해지지 않은 수업이 ' + d.totals.missing + '건 있어요. 원장님이 수업별 급여를 입력하면 금액이 채워져요.' }));
     if (closed) summary.appendChild(h('div', { class: 'okbox', text: '마감된 정산입니다. 수정이 필요하면 이의 신청을 남겨 주세요.' }));
     box.appendChild(summary);
 
@@ -819,7 +819,7 @@ var PayRules = (function () {
     body.appendChild(h('div', { class: 'card flat stack' },
       h('b', { text: dateLabel(l.date) + ' · ' + l.typeName + (l.headcount ? ' · ' + l.headcount + '명' : '') }),
       h('span', { class: 'small muted', text: l.statusLabel + (l.memo ? ' · ' + l.memo : '') }),
-      h('b', { class: 'num', text: l.amount === null ? '단가 미설정' : won(l.amount) })));
+      h('b', { class: 'num', text: l.amount === null ? '급여 미설정' : won(l.amount) })));
     if (!l.frozen) {
       body.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { sh.close(); teacherEditSheet(l); } }, '수정하기'));
       body.appendChild(deleteControl(function () { return api('me.voidLesson', { recordId: l.recordId }); }, function () { sh.close(); toast('삭제했어요.'); loadT(d.period.key); }));
@@ -896,7 +896,7 @@ var PayRules = (function () {
     wrap.appendChild(header('정산·선생님 관리'));
     add(wrap, demoBanner());
     var cur = S.tab === 'detail' ? 'overview' : S.tab;
-    wrap.appendChild(tabsBar([['overview', '정산'], ['disputes', '이의', a.openCount || 0], ['teachers', '선생님'], ['rates', '단가'], ['settings', '설정']], cur, function (t) { goAdmin(t); }));
+    wrap.appendChild(tabsBar([['overview', '정산'], ['disputes', '이의', a.openCount || 0], ['teachers', '선생님'], ['rates', '수업별 급여'], ['settings', '설정']], cur, function (t) { goAdmin(t); }));
     if (a.err) {
       wrap.appendChild(h('div', { class: 'err', text: a.err }));
       wrap.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { loadAdmin(); } }, '다시 불러오기'));
@@ -924,7 +924,7 @@ var PayRules = (function () {
       h('span', { class: 'small muted', text: '선생님 ' + d.rows.length + '명 · 수업 ' + d.sum.count + '건' + (tax ? ' · 원천징수 후 ' + won(d.sum.net) : '') })));
     var alerts = [];
     if (d.sum.openDisputes) alerts.push('이의 신청 ' + d.sum.openDisputes + '건이 처리를 기다립니다.');
-    if (d.sum.missing) alerts.push('단가가 없는 수업이 ' + d.sum.missing + '건 있습니다. [단가] 탭에서 입력해 주세요.');
+    if (d.sum.missing) alerts.push('수업별 급여가 없는 수업이 ' + d.sum.missing + '건 있습니다. [수업별 급여] 탭에서 입력해 주세요.');
     if (d.sum.review) alerts.push('원장님 확인이 필요한 수업(결강·보강)이 ' + d.sum.review + '건 있습니다.');
     if (alerts.length && !per.closed) box.appendChild(h('div', { class: 'note stack' }, alerts.map(function (t) { return h('div', { text: '• ' + t }); })));
 
@@ -934,7 +934,7 @@ var PayRules = (function () {
     var rows = d.rows.map(function (r) {
       var tags = [];
       if (r.openDisputes) tags.push(h('span', { class: 'tag bad', text: '이의 ' + r.openDisputes }));
-      if (r.missing) tags.push(h('span', { class: 'tag warn', text: '단가없음 ' + r.missing }));
+      if (r.missing) tags.push(h('span', { class: 'tag warn', text: '급여없음 ' + r.missing }));
       if (r.review) tags.push(h('span', { class: 'tag warn', text: '확인필요 ' + r.review }));
       tags.push(h('span', { class: 'tag ' + (r.confirm === 'confirmed' ? 'ok' : (r.confirm === 'stale' ? 'warn' : 'mute')), text: r.confirm === 'confirmed' ? '본인확인' : (r.confirm === 'stale' ? '수정됨' : '미확인') }));
       var cells = [
@@ -959,7 +959,7 @@ var PayRules = (function () {
 
     var close = h('div', { class: 'card stack' }, h('h2', { text: per.closed ? '마감됨' : '정산 마감' }));
     if (per.closed) {
-      close.appendChild(h('p', { class: 'small muted', text: '이 기간의 금액은 마감 시점으로 고정되어 있습니다. 단가를 바꿔도 달라지지 않습니다.' }));
+      close.appendChild(h('p', { class: 'small muted', text: '이 기간의 금액은 마감 시점으로 고정되어 있습니다. 수업별 급여를 바꿔도 달라지지 않습니다.' }));
       close.appendChild(reopenControl(per.key));
     } else {
       close.appendChild(h('p', { class: 'small muted', text: '마감하면 이 기간의 수업과 금액이 고정되고 선생님은 더 이상 고칠 수 없습니다. 잘못되면 마감을 취소할 수 있습니다.' }));
@@ -1017,7 +1017,7 @@ var PayRules = (function () {
   function reopenControl(period) {
     var box = h('div', { class: 'stack' }), err = errBox();
     var first = h('button', { class: 'btn danger block', type: 'button' }, '마감 취소하기');
-    var ask = h('div', { class: 'stack', hidden: true }, h('p', { class: 'small', text: '마감을 취소하면 선생님이 다시 수정할 수 있고, 금액은 현재 단가로 다시 계산됩니다.' }));
+    var ask = h('div', { class: 'stack', hidden: true }, h('p', { class: 'small', text: '마감을 취소하면 선생님이 다시 수정할 수 있고, 금액은 현재 수업별 급여로 다시 계산됩니다.' }));
     var yes = h('button', { class: 'btn danger block', type: 'button' }, '네, 마감을 취소합니다');
     ask.appendChild(yes); ask.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { ask.hidden = true; first.hidden = false; } }, '아니요'));
     first.addEventListener('click', function () { first.hidden = true; ask.hidden = false; });
@@ -1057,7 +1057,7 @@ var PayRules = (function () {
     var form = lessonForm({
       form: d.form, admin: true, reset: true, submitLabel: '저장하기',
       onSubmit: function (p) { p.acctId = d.teacher.id; return api('admin.addLesson', p); },
-      onDone: function (res, p, c) { toast('저장했어요 · ' + (c.amount === null ? '단가 미설정' : won(c.amount))); loadAdmin(); }
+      onDone: function (res, p, c) { toast('저장했어요 · ' + (c.amount === null ? '급여 미설정' : won(c.amount))); loadAdmin(); }
     });
     sh = openSheet(d.teacher.name + ' 선생님 수업 입력', form);
   }
@@ -1066,7 +1066,7 @@ var PayRules = (function () {
     body.appendChild(h('div', { class: 'card flat stack' },
       h('b', { text: dateLabel(l.date) + ' · ' + l.typeName + (l.headcount ? ' · ' + l.headcount + '명' : '') }),
       h('span', { class: 'small muted', text: l.statusLabel + (l.memo ? ' · ' + l.memo : '') }),
-      h('b', { class: 'num', text: l.amount === null ? '단가 미설정' : won(l.amount) })));
+      h('b', { class: 'num', text: l.amount === null ? '급여 미설정' : won(l.amount) })));
     if (!l.frozen) {
       if (l.needsReview) {
         var ver = h('button', { class: 'btn primary block', type: 'button' }, '확인 완료');
@@ -1097,7 +1097,7 @@ var PayRules = (function () {
       var card = h('div', { class: 'card stack' });
       card.appendChild(h('div', { class: 'row' }, h('b', { class: 'grow', text: d.name + ' · ' + monthLabel(d.period) }), h('span', { class: 'tag ' + (d.state === 'open' ? 'warn' : 'ok'), text: d.state === 'open' ? '처리 대기' : '처리 완료' })));
       card.appendChild(h('div', null, h('b', { text: d.reason }), d.memo ? h('p', { class: 'small', text: d.memo }) : null, h('span', { class: 'tiny muted', text: stamp(d.ts) })));
-      if (d.lesson) card.appendChild(h('div', { class: 'card flat small', text: '대상 수업: ' + dateLabel(d.lesson.date) + ' · ' + d.lesson.typeName + (d.lesson.headcount ? ' · ' + d.lesson.headcount + '명' : '') + ' · ' + d.lesson.statusLabel + ' · ' + (d.lesson.amount === null ? '단가 미설정' : won(d.lesson.amount)) }));
+      if (d.lesson) card.appendChild(h('div', { class: 'card flat small', text: '대상 수업: ' + dateLabel(d.lesson.date) + ' · ' + d.lesson.typeName + (d.lesson.headcount ? ' · ' + d.lesson.headcount + '명' : '') + ' · ' + d.lesson.statusLabel + ' · ' + (d.lesson.amount === null ? '급여 미설정' : won(d.lesson.amount)) }));
       if (d.state === 'open') {
         var note = h('input', { type: 'text', maxlength: '200', placeholder: '선생님께 남길 답변 (선택)', 'aria-label': '답변' });
         var done = h('button', { class: 'btn primary', type: 'button' }, '처리 완료');
@@ -1124,7 +1124,7 @@ var PayRules = (function () {
     if (a.newPins) box.appendChild(pinListBox(a.newPins.list, a.newPins.title));
     var names = h('textarea', { placeholder: '이름을 한 줄에 한 명씩 (또는 쉼표로 구분)\n예) 홍길동', 'aria-label': '추가할 선생님 이름' });
     var active = a.accounts.filter(function (x) { return x.status === '활성' && x.role === 'teacher'; });
-    var copy = h('select', { 'aria-label': '단가 복사' }, h('option', { value: '', text: '단가를 복사하지 않음 (기본 단가 사용)' }), active.map(function (x) { return h('option', { value: x.id, text: x.name + ' 선생님과 같은 단가' }); }));
+    var copy = h('select', { 'aria-label': '수업별 급여 복사' }, h('option', { value: '', text: '수업별 급여를 복사하지 않음 (기본 수업 급여 사용)' }), active.map(function (x) { return h('option', { value: x.id, text: x.name + ' 선생님과 같은 수업별 급여' }); }));
     var err = errBox();
     var addBtn = h('button', { class: 'btn primary block', type: 'button' }, '선생님 추가');
     addBtn.addEventListener('click', function () {
@@ -1137,7 +1137,7 @@ var PayRules = (function () {
         });
       }).catch(function (e) { showErr(err, errText(e)); });
     });
-    box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '새 선생님 추가' }), field('이름', names), field('단가', copy), err, addBtn));
+    box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '새 선생님 추가' }), field('이름', names), field('수업별 급여', copy), err, addBtn));
 
     var rows = a.accounts.map(function (x) {
       var isMe = x.id === S.session.id;
@@ -1188,7 +1188,7 @@ var PayRules = (function () {
       h('p', { class: 'small muted', text: '더 이상 로그인할 수 없고, 선생님 목록에서 사라집니다. 지난 정산 기록은 그대로 남고, 실수라면 [다시 근무]로 되돌릴 수 있어요.' }), err, go));
   }
 
-  // ----- 단가 -----
+  // ----- 수업별 급여 -----
   function rateText(type, rate) {
     if (!rate) return '미설정';
     if (type.mode === 'fixed') return rate.fixed === null ? '미설정' : won(rate.fixed);
@@ -1200,12 +1200,12 @@ var PayRules = (function () {
     var a = S.a, d = a.rates, box = h('div', { class: 'stack' });
     if (!a.rateTarget) a.rateTarget = '*';
     var activeTypes = d.types.filter(function (t) { return t.active; });
-    var sel = h('select', { 'aria-label': '단가를 입력할 대상', onchange: function () { a.rateTarget = sel.value; render(); } },
-      h('option', { value: '*', text: '모든 선생님 기본 단가' }), d.teachers.map(function (t) { return h('option', { value: t.id, text: t.name + ' 선생님만 따로' }); }));
+    var sel = h('select', { 'aria-label': '수업별 급여를 입력할 대상', onchange: function () { a.rateTarget = sel.value; render(); } },
+      h('option', { value: '*', text: '모든 선생님 기본 수업 급여' }), d.teachers.map(function (t) { return h('option', { value: t.id, text: t.name + ' 선생님만 따로' }); }));
     sel.value = a.rateTarget;
     var isDefault = a.rateTarget === '*';
-    box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '단가 입력' }),
-      h('p', { class: 'small muted', text: isDefault ? '기본 단가는 모든 선생님에게 적용됩니다. 선생님마다 다르면 아래에서 그 선생님만 따로 입력하세요.' : '비워 두면 기본 단가를 따릅니다. 이 선생님만 다를 때만 입력하세요.' }),
+    box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '수업별 급여 입력' }),
+      h('p', { class: 'small muted', text: isDefault ? '기본 수업 급여는 모든 선생님에게 적용됩니다. 선생님마다 다르면 아래에서 그 선생님만 따로 입력하세요.' : '비워 두면 기본 수업 급여를 따릅니다. 이 선생님만 다를 때만 입력하세요.' }),
       sel));
     var tc = ['1명', '2명', '3명', '4명', '5명 이상'];
     activeTypes.forEach(function (t) {
@@ -1220,10 +1220,10 @@ var PayRules = (function () {
         inputs.push(inp);
         return field(label, inp);
       }
-      if (t.mode === 'fixed') card.appendChild(mk('1회 수업료 (원)', own ? own.fixed : '', def ? def.fixed : ''));
+      if (t.mode === 'fixed') card.appendChild(mk('1회 수업 급여 (원)', own ? own.fixed : '', def ? def.fixed : ''));
       else card.appendChild(h('div', { class: 'tiers' }, tc.map(function (lab, i) { var k = 't' + (i + 1); return mk(lab, own ? own[k] : '', def ? def[k] : ''); })));
       var hasOwn = own && ['fixed', 't1', 't2', 't3', 't4', 't5'].some(function (k) { return own[k] !== '' && own[k] !== null && own[k] !== undefined; });
-      if (isDefault && !hasOwn) card.appendChild(h('div', { class: 'note', text: '아직 단가가 없습니다. 입력하기 전까지 이 수업은 "단가 미설정"으로 표시됩니다.' }));
+      if (isDefault && !hasOwn) card.appendChild(h('div', { class: 'note', text: '아직 수업별 급여가 없습니다. 입력하기 전까지 이 수업은 "급여 미설정"으로 표시됩니다.' }));
       var save = h('button', { class: 'btn primary', type: 'button' }, '저장');
       save.addEventListener('click', function () {
         showErr(err, '');
@@ -1233,19 +1233,19 @@ var PayRules = (function () {
         if (vals.every(function (v) { return v === ''; })) p.clear = true;
         else if (t.mode === 'fixed') p.fixed = vals[0];
         else p.tiers = vals;
-        busyBtn(save, function () { return api('admin.setRate', p).then(function () { toast(t.name + ' 단가를 저장했어요.'); loadAdmin(); }); }).catch(function (e) { showErr(err, errText(e)); });
+        busyBtn(save, function () { return api('admin.setRate', p).then(function () { toast(t.name + ' 수업별 급여를 저장했어요.'); loadAdmin(); }); }).catch(function (e) { showErr(err, errText(e)); });
       });
       card.appendChild(err); card.appendChild(save);
       box.appendChild(card);
     });
 
-    // 선생님별 현재 적용 단가 한눈에 보기
+    // 선생님별 현재 적용 수업별 급여 한눈에 보기
     var rows = d.teachers.map(function (tc2) {
       return h('tr', null, h('td', null, h('button', { class: 'namebtn', type: 'button', onclick: function () { a.rateTarget = tc2.id; render(); window.scrollTo(0, 0); } }, tc2.name)),
         activeTypes.map(function (t) { return h('td', { class: 'n', text: rateText(t, R.resolveRate(d.rates, t, tc2.id)) }); }));
     });
-    if (rows.length) box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '선생님별 적용 단가 한눈에 보기' }),
-      h('p', { class: 'tiny muted', text: '인원별 단가는 1명 / 2명 / 3명 / 4명 / 5명 이상 순서이며 단위는 만 원입니다. 이름을 누르면 그 선생님 단가를 고칠 수 있어요.' }),
+    if (rows.length) box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '선생님별 수업 급여 한눈에 보기' }),
+      h('p', { class: 'tiny muted', text: '인원별 급여는 1명 / 2명 / 3명 / 4명 / 5명 이상 순서이며 단위는 만 원입니다. 이름을 누르면 그 선생님 수업별 급여를 고칠 수 있어요.' }),
       h('div', { class: 'tablewrap' }, h('table', null, h('thead', null, h('tr', null, h('th', { text: '선생님' }), activeTypes.map(function (t) { return h('th', { class: 'n', text: t.name }); }))), h('tbody', null, rows)))));
 
     // 수업 유형 관리
@@ -1263,7 +1263,7 @@ var PayRules = (function () {
     var mode = h('select', { 'aria-label': '금액 방식' }, h('option', { value: 'fixed', text: '1회 금액이 정해져 있음' }), h('option', { value: 'tiered', text: '인원수에 따라 금액이 달라짐' }));
     var addT = h('button', { class: 'btn small primary', type: 'button' }, '유형 추가');
     var terr = errBox();
-    addT.addEventListener('click', function () { showErr(terr, ''); busyBtn(addT, function () { return api('admin.setType', { name: nn.value, mode: mode.value }).then(function () { toast('추가했어요. 위에서 단가를 입력해 주세요.'); loadAdmin(); }); }).catch(function (e) { showErr(terr, errText(e)); }); });
+    addT.addEventListener('click', function () { showErr(terr, ''); busyBtn(addT, function () { return api('admin.setType', { name: nn.value, mode: mode.value }).then(function () { toast('추가했어요. 위에서 수업별 급여를 입력해 주세요.'); loadAdmin(); }); }).catch(function (e) { showErr(terr, errText(e)); }); });
     tbox.appendChild(h('hr', { class: 'sep' }));
     tbox.appendChild(nn); tbox.appendChild(mode); tbox.appendChild(terr); tbox.appendChild(addT);
     box.appendChild(tbox);
