@@ -436,7 +436,7 @@ var PayRules = (function () {
   }
 
   // ===== 서버 호출 =====
-  var S = { session: null, names: null, namesErr: '', role: 'teacher', tab: null, t: null, a: null, busy: false };
+  var S = { draft: { name: '', pin: '' }, session: null, names: null, namesErr: '', role: 'teacher', tab: null, t: null, a: null, busy: false };
 
   function realFetch(body) {
     if (!CFG.apiUrl) return Promise.reject(Object.assign(new Error('서버 주소가 아직 연결되지 않았습니다. 원장님께 알려 주세요.'), { code: 'config' }));
@@ -462,6 +462,7 @@ var PayRules = (function () {
   }
   function endSession() {
     S.session = null; S.t = null; S.a = null; S.tab = null; store(SESSION_KEY, null);
+    S.names = null; setTimeout(function () { loadNames(); }, 0); // 로그인 화면의 이름 목록을 새로 불러옵니다
   }
   function errText(e) { return (e && e.message) || '문제가 생겼어요.'; }
 
@@ -552,17 +553,20 @@ var PayRules = (function () {
   function viewLogin() {
     var wrap = h('div', { class: 'stack' });
     wrap.appendChild(h('div', { class: 'brand' }, h('b', { text: 'BVD 선생님 정산' }), h('span', { text: '베스트보컬&댄스' })));
-    wrap.appendChild(demoBanner());
+    add(wrap, demoBanner());
     var card = h('div', { class: 'card stack' });
     var seg = h('div', { class: 'seg' },
-      h('button', { type: 'button', 'aria-pressed': S.role === 'teacher' ? 'true' : 'false', onclick: function () { S.role = 'teacher'; render(); } }, '선생님'),
-      h('button', { type: 'button', 'aria-pressed': S.role === 'admin' ? 'true' : 'false', onclick: function () { S.role = 'admin'; render(); } }, '원장·관리자'));
+      h('button', { type: 'button', 'aria-pressed': S.role === 'teacher' ? 'true' : 'false', onclick: function () { S.role = 'teacher'; S.draft = { name: '', pin: '' }; render(); } }, '선생님'),
+      h('button', { type: 'button', 'aria-pressed': S.role === 'admin' ? 'true' : 'false', onclick: function () { S.role = 'admin'; S.draft = { name: '', pin: '' }; render(); } }, '원장·관리자'));
     card.appendChild(seg);
     var list = S.names ? (S.role === 'admin' ? S.names.admins : S.names.teachers) : [];
     var sel = h('select', { 'aria-label': '이름' }, h('option', { value: '', text: '이름을 선택하세요' }), list.map(function (n) { return h('option', { value: n, text: n }); }));
-    var last = store(LAST_KEY);
+    var last = S.draft.name || store(LAST_KEY);
     if (last && list.indexOf(last) >= 0) sel.value = last;
+    sel.addEventListener('change', function () { S.draft.name = sel.value; });
     var pin = h('input', { type: 'password', inputmode: 'numeric', autocomplete: 'current-password', placeholder: '비밀번호 (숫자)', 'aria-label': '비밀번호' });
+    pin.value = S.draft.pin;
+    pin.addEventListener('input', function () { S.draft.pin = pin.value; });
     var err = errBox();
     if (S.namesErr) showErr(err, S.namesErr);
     var go = h('button', { class: 'btn primary block', type: 'button' }, '들어가기');
@@ -572,7 +576,7 @@ var PayRules = (function () {
       if (!pin.value) return showErr(err, '비밀번호를 입력해 주세요.');
       busyBtn(go, function () {
         return api('public.login', { name: sel.value, pin: pin.value, role: S.role }).then(function (r) {
-          store(LAST_KEY, sel.value);
+          store(LAST_KEY, sel.value); S.draft = { name: '', pin: '' };
           S.session = { token: r.token, role: r.role, name: r.name, id: r.id };
           saveSession(); S.tab = r.role === 'admin' ? 'overview' : 'entry'; S.t = null; S.a = { period: null };
           render(); loadSession();
@@ -593,7 +597,7 @@ var PayRules = (function () {
       var hint = DEMO.hints[S.role];
       wrap.appendChild(h('div', { class: 'card flat stack' },
         h('p', { class: 'small', text: '연습용 계정: ' + hint.name + ' / 비밀번호 ' + hint.pin }),
-        h('button', { class: 'btn small', type: 'button', onclick: function () { sel.value = hint.name; pin.value = hint.pin; } }, '연습 계정 채우기')));
+        h('button', { class: 'btn small', type: 'button', onclick: function () { sel.value = hint.name; pin.value = hint.pin; S.draft = { name: hint.name, pin: hint.pin }; } }, '연습 계정 채우기')));
     }
     return wrap;
   }
@@ -724,7 +728,7 @@ var PayRules = (function () {
   function viewTeacher() {
     var wrap = h('div', { class: 'stack' });
     wrap.appendChild(header(S.t ? monthLabel(S.t.period.key) + ' · ' + rangeLabel(S.t.period) : ''));
-    wrap.appendChild(demoBanner());
+    add(wrap, demoBanner());
     wrap.appendChild(tabsBar([['entry', '수업 입력'], ['month', '내 정산']], S.tab, function (t) { S.tab = t; render(); }));
     if (!S.t) {
       if (S.tErr) { wrap.appendChild(h('div', { class: 'err', text: S.tErr })); wrap.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { S.tErr = ''; render(); loadT(); } }, '다시 불러오기')); }
@@ -890,7 +894,7 @@ var PayRules = (function () {
   function viewAdmin() {
     var a = S.a || (S.a = {}), wrap = h('div', { class: 'stack' });
     wrap.appendChild(header('정산·선생님 관리'));
-    wrap.appendChild(demoBanner());
+    add(wrap, demoBanner());
     var cur = S.tab === 'detail' ? 'overview' : S.tab;
     wrap.appendChild(tabsBar([['overview', '정산'], ['disputes', '이의', a.openCount || 0], ['teachers', '선생님'], ['rates', '단가'], ['settings', '설정']], cur, function (t) { goAdmin(t); }));
     if (a.err) {
