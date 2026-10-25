@@ -1,0 +1,1316 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>BVD 선생님 정산</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+:root {
+  --bg: #F5F6FA; --surface: #FFFFFF; --ink: #1B1F3B; --muted: #5C627C; --line: #DFE2EE;
+  --accent: #3F3FD8; --accent-ink: #FFFFFF; --accent-soft: #E9E9FB;
+  --money: #0B6B5F; --money-soft: #E1F2EE;
+  --warn: #8F5600; --warn-soft: #FFF1D6;
+  --bad: #B3261E; --bad-soft: #FDE7E5;
+  --ok: #1B7F3B; --ok-soft: #E1F3E6;
+  --shadow: 0 1px 2px rgba(27,31,59,.06), 0 4px 14px rgba(27,31,59,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12141F; --surface: #1B1E2E; --ink: #ECEEF8; --muted: #A5ABC4; --line: #2E3248;
+    --accent: #9A9AFF; --accent-ink: #12141F; --accent-soft: #2A2C55;
+    --money: #62D6C1; --money-soft: #16332E;
+    --warn: #F2B857; --warn-soft: #3A2E14;
+    --bad: #FF8F85; --bad-soft: #3B1B1A;
+    --ok: #74D391; --ok-soft: #14301E;
+    --shadow: 0 1px 2px rgba(0,0,0,.4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12141F; --surface: #1B1E2E; --ink: #ECEEF8; --muted: #A5ABC4; --line: #2E3248;
+  --accent: #9A9AFF; --accent-ink: #12141F; --accent-soft: #2A2C55;
+  --money: #62D6C1; --money-soft: #16332E;
+  --warn: #F2B857; --warn-soft: #3A2E14;
+  --bad: #FF8F85; --bad-soft: #3B1B1A;
+  --ok: #74D391; --ok-soft: #14301E;
+  --shadow: 0 1px 2px rgba(0,0,0,.4);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  font-size: 16px; line-height: 1.55; margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 48px;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+h2 { font-size: 1.1rem; font-weight: 700; text-wrap: balance; }
+h3 { font-size: 1rem; font-weight: 700; }
+
+.shell { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.shell.wide { max-width: 1000px; }
+.stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; min-width: 0; }
+.grow { flex: 1 1 0; min-width: 0; }
+.muted { color: var(--muted); }
+.small { font-size: .875rem; }
+.tiny { font-size: .8125rem; }
+.num { font-variant-numeric: tabular-nums; }
+.right { text-align: right; }
+
+/* 머리글 */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.brand { display: flex; flex-direction: column; min-width: 0; }
+.brand b { font-size: 1.15rem; line-height: 1.25; overflow-wrap: anywhere; }
+.brand span { font-size: .8125rem; color: var(--muted); }
+.linkbtn { background: none; border: 0; color: var(--accent); padding: 8px 6px; min-height: 40px; font-size: .9375rem; }
+.demo-banner { background: var(--warn-soft); color: var(--warn); border-radius: 10px; padding: 10px 12px; font-size: .875rem; }
+
+/* 탭 */
+.tabs { display: flex; gap: 4px; background: var(--accent-soft); padding: 4px; border-radius: 12px; overflow-x: auto; }
+.tabs button { flex: 1 0 auto; border: 0; background: transparent; padding: 10px 12px; min-height: 44px; border-radius: 9px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: var(--shadow); }
+.badge { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 10px; background: var(--bad); color: var(--surface); font-size: .75rem; line-height: 20px; text-align: center; }
+
+/* 카드 */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+.card.flat { box-shadow: none; }
+.card h2 + .muted { margin-top: 2px; }
+
+/* 폼 */
+label.field { display: flex; flex-direction: column; gap: 6px; font-size: .875rem; font-weight: 500; color: var(--muted); }
+.field > span { display: block; }
+input[type=text], input[type=password], input[type=date], input[type=number], input[type=search], select, textarea {
+  width: 100%; min-height: 48px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px;
+  background: var(--surface); color: var(--ink); font-size: 1rem;
+}
+textarea { min-height: 96px; resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 10px 18px;
+  border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 700; color: var(--ink);
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--bad); border-color: var(--bad); }
+.btn.small { min-height: 40px; padding: 6px 12px; font-size: .9rem; font-weight: 500; }
+.btn.block { width: 100%; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.err { color: var(--bad); background: var(--bad-soft); padding: 10px 12px; border-radius: 10px; font-size: .9375rem; overflow-wrap: anywhere; }
+.note { color: var(--warn); background: var(--warn-soft); padding: 10px 12px; border-radius: 10px; font-size: .9375rem; }
+.okbox { color: var(--ok); background: var(--ok-soft); padding: 10px 12px; border-radius: 10px; font-size: .9375rem; }
+
+.seg { display: flex; gap: 4px; background: var(--accent-soft); padding: 4px; border-radius: 12px; }
+.seg button { flex: 1; border: 0; background: transparent; min-height: 44px; border-radius: 9px; color: var(--muted); font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: var(--shadow); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  min-height: 48px; padding: 8px 16px; border-radius: 24px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 500;
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.stepper { display: flex; align-items: center; gap: 12px; }
+.stepper button { width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font-size: 1.4rem; line-height: 1; }
+.stepper output { min-width: 64px; text-align: center; font-size: 1.4rem; font-weight: 700; }
+.statuses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.statuses button {
+  text-align: left; padding: 10px 12px; min-height: 56px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.statuses button b { font-size: .9375rem; overflow-wrap: anywhere; }
+.statuses button span { font-size: .75rem; color: var(--muted); }
+.statuses button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+
+.amount {
+  background: var(--money-soft); color: var(--money); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px;
+}
+.amount small { font-size: .8125rem; opacity: .9; }
+.amount strong { font-size: 1.9rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.amount.empty { background: var(--accent-soft); color: var(--muted); }
+.amount.empty strong { font-size: 1rem; font-weight: 500; }
+.amount.warnbox { background: var(--warn-soft); color: var(--warn); }
+.amount.warnbox strong { font-size: 1.1rem; }
+
+/* 목록 */
+.list { display: flex; flex-direction: column; }
+.item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); background: none; border-left: 0; border-right: 0; border-bottom: 0;
+  width: 100%; text-align: left; min-height: 56px;
+}
+.list > .item:first-child { border-top: 0; }
+.item .main { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.item .main b { font-weight: 500; overflow-wrap: anywhere; }
+.item .amt { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.item .amt.zero { color: var(--muted); font-weight: 500; }
+.item .amt.unset { color: var(--warn); }
+.datehead { font-size: .8125rem; font-weight: 700; color: var(--muted); padding: 14px 0 2px; }
+.tag { display: inline-block; font-size: .75rem; padding: 1px 8px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); margin-right: 4px; white-space: nowrap; }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.bad { background: var(--bad-soft); color: var(--bad); }
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+.tag.mute { background: var(--bg); color: var(--muted); }
+
+.summary { display: flex; flex-direction: column; gap: 4px; }
+.summary .big { font-size: 2.1rem; font-weight: 700; color: var(--money); font-variant-numeric: tabular-nums; line-height: 1.2; }
+
+/* 표 */
+.tablewrap { overflow-x: auto; max-width: 100%; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .9375rem; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font-size: .8125rem; color: var(--muted); font-weight: 500; white-space: nowrap; background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.click { cursor: pointer; }
+tr.click:hover td { background: var(--accent-soft); }
+tfoot td { font-weight: 700; background: var(--bg); }
+.namebtn { background: none; border: 0; padding: 4px 0; font-weight: 700; color: var(--accent); text-align: left; min-height: 36px; }
+
+/* 시트(아래에서 올라오는 창) */
+.backdrop { position: fixed; inset: 0; background: rgba(10,12,24,.5); display: flex; align-items: flex-end; justify-content: center; z-index: 50; }
+.sheet {
+  background: var(--surface); color: var(--ink); width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
+  border-radius: 20px 20px 0 0; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  display: flex; flex-direction: column; gap: 14px;
+}
+.sheet .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+@media (min-width: 640px) {
+  .backdrop { align-items: center; }
+  .sheet { border-radius: 20px; }
+}
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 80;
+  background: var(--ink); color: var(--bg); padding: 12px 18px; border-radius: 12px; max-width: min(92vw, 480px); text-align: center; box-shadow: var(--shadow);
+}
+.pre { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8125rem; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 40vh; overflow-y: auto; }
+.pins { display: flex; flex-direction: column; gap: 6px; }
+.pins div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--bg); border-radius: 10px; }
+.pins b { font-variant-numeric: tabular-nums; letter-spacing: .08em; }
+.ratecard { display: flex; flex-direction: column; gap: 10px; }
+.tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
+.loading { padding: 40px 0; text-align: center; color: var(--muted); }
+hr.sep { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
+@media (max-width: 420px) {
+  .statuses { grid-template-columns: 1fr 1fr; }
+  .summary .big { font-size: 1.8rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .chip, .statuses button { transition: background-color .12s, border-color .12s; }
+}
+
+</style>
+
+</head>
+<body>
+<div id="app" class="shell"></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<noscript>이 화면은 자바스크립트가 켜져 있어야 사용할 수 있습니다.</noscript>
+<script>
+// Rules.js — 정산 규칙 (순수 함수)
+// 구글 Apps Script(서버)와 웹 화면이 똑같은 코드를 씁니다. 이 파일에는 시트나 화면 코드가 없습니다.
+var PayRules = (function () {
+  'use strict';
+
+  var DEFAULT_END_DAY = 29;
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function lastDay(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); } // m: 1~12
+
+  function parseDate(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+    if (!m) return null;
+    var y = +m[1], mo = +m[2], d = +m[3];
+    if (mo < 1 || mo > 12 || d < 1 || d > lastDay(y, mo)) return null;
+    return { y: y, m: mo, d: d };
+  }
+  function fmtDate(o) { return o.y + '-' + pad(o.m) + '-' + pad(o.d); }
+  function addDays(dateStr, n) {
+    var p = parseDate(dateStr);
+    var t = new Date(Date.UTC(p.y, p.m - 1, p.d) + n * 86400000);
+    return t.getUTCFullYear() + '-' + pad(t.getUTCMonth() + 1) + '-' + pad(t.getUTCDate());
+  }
+  function validKey(k) { return /^\d{4}-(0[1-9]|1[0-2])$/.test(String(k || '')); }
+  function prevKey(key) {
+    var y = +key.slice(0, 4), m = +key.slice(5, 7) - 1;
+    if (m < 1) { m = 12; y--; }
+    return y + '-' + pad(m);
+  }
+  function nextKey(key) {
+    var y = +key.slice(0, 4), m = +key.slice(5, 7) + 1;
+    if (m > 12) { m = 1; y++; }
+    return y + '-' + pad(m);
+  }
+  function cleanEndDay(v) {
+    var n = Math.floor(Number(v));
+    if (!(n >= 1 && n <= 31)) return DEFAULT_END_DAY;
+    return n;
+  }
+
+  // 정산 기간: 키는 "끝나는 달"(예: 2026-11). 끝나는 날은 그 달의 endDay일(말일이 더 빠르면 말일).
+  // 시작일은 전 기간의 끝나는 날 다음 날이라서 빈 날도 겹치는 날도 생기지 않습니다.
+  function periodEnd(key, endDay) {
+    var y = +key.slice(0, 4), m = +key.slice(5, 7);
+    return fmtDate({ y: y, m: m, d: Math.min(cleanEndDay(endDay), lastDay(y, m)) });
+  }
+  function periodRange(key, endDay) {
+    return { key: key, start: addDays(periodEnd(prevKey(key), endDay), 1), end: periodEnd(key, endDay) };
+  }
+  function periodKeyOf(dateStr, endDay) {
+    var p = parseDate(dateStr);
+    if (!p) return null;
+    var key = p.y + '-' + pad(p.m);
+    return dateStr <= periodEnd(key, endDay) ? key : nextKey(key);
+  }
+
+  // 급여일: 정산 기간이 끝난 다음 달 5일
+  function payDate(key) {
+    var nk = nextKey(key);
+    return nk + '-05';
+  }
+
+  // ----- 금액 계산 -----
+  function toIntOrNull(v) {
+    if (v === '' || v === null || v === undefined) return null;
+    var n = Number(v);
+    if (!isFinite(n) || n < 0) return null;
+    return Math.round(n);
+  }
+  function tierIndex(n) {
+    n = Math.floor(n);
+    if (n <= 1) return 0;
+    if (n >= 5) return 4;
+    return n - 1;
+  }
+  function makeRate(type, row) {
+    if (!type || !row) return null;
+    return {
+      mode: type.mode === 'tiered' ? 'tiered' : 'fixed',
+      fixed: toIntOrNull(row.fixed),
+      tiers: [toIntOrNull(row.t1), toIntOrNull(row.t2), toIntOrNull(row.t3), toIntOrNull(row.t4), toIntOrNull(row.t5)]
+    };
+  }
+  function hasValues(r) {
+    return toIntOrNull(r.fixed) !== null || toIntOrNull(r.t1) !== null || toIntOrNull(r.t2) !== null ||
+      toIntOrNull(r.t3) !== null || toIntOrNull(r.t4) !== null || toIntOrNull(r.t5) !== null;
+  }
+  // 개인 단가가 있으면 그것, 없으면 기본 단가("*"). 값이 모두 비어 있는 줄은 "없음"으로 봅니다.
+  function resolveRate(rateRows, type, acctId) {
+    if (!type) return null;
+    var own = null, def = null, i;
+    for (i = 0; i < rateRows.length; i++) {
+      var r = rateRows[i];
+      if (String(r.typeId) !== String(type.id) || !hasValues(r)) continue;
+      if (String(r.acctId) === String(acctId)) own = r;
+      else if (String(r.acctId) === '*') def = r;
+    }
+    return makeRate(type, own || def);
+  }
+  // 반환: { amount: 숫자|null, pay: true|false, reason: ''|'no_rate'|'need_headcount'|'bad_status' }
+  function calcLesson(statusRule, rate, headcount) {
+    if (!statusRule) return { amount: null, pay: false, reason: 'bad_status' };
+    var pays = Number(statusRule.pay) === 1;
+    if (!pays) return { amount: 0, pay: false, reason: '' };
+    if (!rate) return { amount: null, pay: true, reason: 'no_rate' };
+    if (rate.mode === 'fixed') {
+      if (rate.fixed === null) return { amount: null, pay: true, reason: 'no_rate' };
+      return { amount: rate.fixed, pay: true, reason: '' };
+    }
+    var n = Math.floor(Number(headcount));
+    if (!(n >= 1)) return { amount: null, pay: true, reason: 'need_headcount' };
+    var t = rate.tiers[tierIndex(n)];
+    if (t === null || t === undefined) return { amount: null, pay: true, reason: 'no_rate' };
+    return { amount: t, pay: true, reason: '' };
+  }
+
+  function fmtWon(n) {
+    if (n === null || n === undefined) return '단가 미설정';
+    var s = String(Math.round(n)), out = '', c = 0, i;
+    for (i = s.length - 1; i >= 0; i--) {
+      out = s.charAt(i) + out; c++;
+      if (c % 3 === 0 && i > 0) out = ',' + out;
+    }
+    return out + '원';
+  }
+
+  return {
+    DEFAULT_END_DAY: DEFAULT_END_DAY,
+    parseDate: parseDate, addDays: addDays, validKey: validKey,
+    prevKey: prevKey, nextKey: nextKey, cleanEndDay: cleanEndDay,
+    periodEnd: periodEnd, periodRange: periodRange, periodKeyOf: periodKeyOf, payDate: payDate,
+    tierIndex: tierIndex, resolveRate: resolveRate, calcLesson: calcLesson, fmtWon: fmtWon, lastDay: lastDay
+  };
+})();
+
+</script>
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var R = PayRules;
+  var CFG = window.PAYROLL_CONFIG || {};
+  var DEMO = (typeof PAYROLL_DEMO !== 'undefined') ? PAYROLL_DEMO : null;
+  var SESSION_KEY = 'bvd_pay_session', LAST_KEY = 'bvd_pay_last';
+
+  // ===== 작은 도구 =====
+  function h(tag, attrs) {
+    var el = document.createElement(tag), k, v, i;
+    if (attrs) {
+      for (k in attrs) {
+        v = attrs[k];
+        if (v === null || v === undefined || v === false) continue;
+        if (k === 'class') el.className = v;
+        else if (k === 'text') el.textContent = v;
+        else if (k.slice(0, 2) === 'on') el.addEventListener(k.slice(2), v);
+        else if (v === true) el.setAttribute(k, '');
+        else el.setAttribute(k, v);
+      }
+    }
+    for (i = 2; i < arguments.length; i++) add(el, arguments[i]);
+    return el;
+  }
+  function add(el, c) {
+    if (c === null || c === undefined || c === false) return;
+    if (Array.isArray(c)) c.forEach(function (x) { add(el, x); });
+    else if (c.nodeType) el.appendChild(c);
+    else el.appendChild(document.createTextNode(String(c)));
+  }
+  function $(id) { return document.getElementById(id); }
+  function store(key, val) {
+    try {
+      if (val === undefined) return localStorage.getItem(key);
+      if (val === null) localStorage.removeItem(key); else localStorage.setItem(key, val);
+    } catch (e) { /* 저장 공간을 쓸 수 없는 환경 */ }
+    return null;
+  }
+  function won(n) { return R.fmtWon(n); }
+  var DOW = ['일', '월', '화', '수', '목', '금', '토'];
+  function dateLabel(s) {
+    var p = String(s).split('-');
+    if (p.length !== 3) return s;
+    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    return Number(p[1]) + '/' + Number(p[2]) + ' (' + DOW[d.getDay()] + ')';
+  }
+  function monthLabel(key) { var p = key.split('-'); return p[0] + '년 ' + Number(p[1]) + '월분'; }
+  function shortDate(s) { var p = String(s).split('-'); return Number(p[1]) + '/' + Number(p[2]); }
+  function rangeLabel(per) { return shortDate(per.start) + ' ~ ' + shortDate(per.end); }
+  function uid() { return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+  function stamp(s) { return String(s || '').slice(5, 16).replace('-', '/'); }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 3200);
+  }
+
+  function copyText(text, okMsg) {
+    function fallback() {
+      var ta = h('textarea', { 'aria-hidden': 'true', style: 'position:fixed;left:-9999px;top:0' });
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      ta.remove();
+      toast(ok ? okMsg : '복사가 되지 않았어요. 글자를 길게 눌러 직접 복사해 주세요.');
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast(okMsg); }, fallback);
+    } else fallback();
+  }
+  function downloadText(name, text) {
+    try {
+      var blob = new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' });
+      var a = h('a', { href: URL.createObjectURL(blob), download: name });
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { toast('내려받기가 되지 않았어요. [복사]를 눌러 붙여 넣어 주세요.'); }
+  }
+
+  // ===== 서버 호출 =====
+  var S = { session: null, names: null, namesErr: '', role: 'teacher', tab: null, t: null, a: null, busy: false };
+
+  function realFetch(body) {
+    if (!CFG.apiUrl) return Promise.reject(Object.assign(new Error('서버 주소가 아직 연결되지 않았습니다. 원장님께 알려 주세요.'), { code: 'config' }));
+    var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 30000);
+    return fetch(CFG.apiUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined, redirect: 'follow' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { clearTimeout(timer); return j; }, function () {
+        clearTimeout(timer);
+        throw Object.assign(new Error('인터넷 연결이 불안정해요. 잠시 뒤 다시 눌러 주세요. (저장하는 중이었다면 목록을 먼저 확인해 주세요)'), { code: 'network' });
+      });
+  }
+  function api(action, params) {
+    var body = { action: action, params: params || {}, token: S.session ? S.session.token : '' };
+    var p = DEMO ? DEMO.call(body) : realFetch(body);
+    return p.then(function (res) {
+      if (res && res.ok) return res.data;
+      var e = new Error((res && res.error) || '문제가 생겼어요.');
+      e.code = res && res.code; e.warnings = res && res.warnings;
+      if (e.code === 'auth' && S.session) { endSession(); toast('다시 로그인해 주세요.'); render(); }
+      throw e;
+    });
+  }
+  function endSession() {
+    S.session = null; S.t = null; S.a = null; S.tab = null; store(SESSION_KEY, null);
+  }
+  function errText(e) { return (e && e.message) || '문제가 생겼어요.'; }
+
+  // 버튼을 누르는 동안 잠그고, 끝나면 풀어 줍니다(중복 클릭 방지).
+  function busyBtn(btn, fn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    var label = btn.textContent;
+    return Promise.resolve().then(fn).then(function (r) { btn.disabled = false; return r; }, function (e) { btn.disabled = false; throw e; });
+  }
+
+  // ===== 시트(아래에서 올라오는 창) =====
+  var sheets = [];
+  function openSheet(title, body) {
+    var back = h('div', { class: 'backdrop', role: 'dialog', 'aria-modal': 'true', 'aria-label': title });
+    var api2 = { el: back };
+    var close = h('button', { class: 'linkbtn', type: 'button', onclick: function () { api2.close(); } }, '닫기');
+    var sheet = h('div', { class: 'sheet' }, h('div', { class: 'head' }, h('h2', { text: title }), close), body);
+    back.appendChild(sheet);
+    back.addEventListener('mousedown', function (e) { if (e.target === back) api2.close(); });
+    api2.close = function () {
+      var i = sheets.indexOf(api2);
+      if (i >= 0) sheets.splice(i, 1);
+      back.remove();
+    };
+    sheets.push(api2);
+    document.body.appendChild(back);
+    return api2;
+  }
+  function closeAllSheets() { sheets.slice().forEach(function (s) { s.close(); }); }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && sheets.length) sheets[sheets.length - 1].close();
+  });
+
+  // ===== 공통 조각 =====
+  function field(label, input) { return h('label', { class: 'field' }, h('span', { text: label }), input); }
+  function errBox() { return h('div', { class: 'err', role: 'alert', hidden: true }); }
+  function showErr(box, msg) { box.textContent = msg; box.hidden = !msg; }
+  function tabsBar(list, current, onPick) {
+    return h('div', { class: 'tabs', role: 'tablist' }, list.map(function (t) {
+      return h('button', { type: 'button', role: 'tab', 'aria-selected': t[0] === current ? 'true' : 'false', onclick: function () { onPick(t[0]); } }, t[1], t[2] ? h('span', { class: 'badge', text: String(t[2]) }) : null);
+    }));
+  }
+  function periodSelect(periods, current, onPick) {
+    var sel = h('select', { 'aria-label': '정산 기간 선택', onchange: function () { onPick(sel.value); } }, periods.map(function (k) {
+      return h('option', { value: k, selected: k === current ? true : null, text: monthLabel(k) });
+    }));
+    sel.value = current;
+    return sel;
+  }
+  function header(sub, onPin) {
+    return h('div', { class: 'top' },
+      h('div', { class: 'brand' }, h('b', { text: S.session.name + (S.session.role === 'admin' ? ' (관리자)' : ' 선생님') }), h('span', { text: sub })),
+      h('div', { class: 'row' },
+        h('button', { class: 'linkbtn', type: 'button', onclick: pinSheet }, '비밀번호 변경'),
+        h('button', { class: 'linkbtn', type: 'button', onclick: function () { endSession(); closeAllSheets(); render(); } }, '로그아웃')));
+  }
+  function loadingBox(msg) { return h('div', { class: 'loading', text: msg || '불러오는 중…' }); }
+  function demoBanner() {
+    return DEMO ? h('div', { class: 'demo-banner' }, '미리보기용 연습 화면입니다. 입력한 내용은 이 화면을 닫으면 사라지고, 실제 데이터와 연결되어 있지 않습니다.') : null;
+  }
+
+  function pinSheet() {
+    var oldP = h('input', { type: 'password', inputmode: 'numeric', autocomplete: 'current-password' });
+    var n1 = h('input', { type: 'password', inputmode: 'numeric', autocomplete: 'new-password', placeholder: '숫자 6~12자리' });
+    var n2 = h('input', { type: 'password', inputmode: 'numeric', autocomplete: 'new-password' });
+    var err = errBox(), sh;
+    var save = h('button', { class: 'btn primary block', type: 'button' }, '비밀번호 바꾸기');
+    save.addEventListener('click', function () {
+      showErr(err, '');
+      if (!/^\d{6,12}$/.test(n1.value)) return showErr(err, '새 비밀번호는 숫자 6~12자리로 정해 주세요.');
+      if (n1.value !== n2.value) return showErr(err, '새 비밀번호가 서로 달라요.');
+      busyBtn(save, function () {
+        return api('me.changePin', { oldPin: oldP.value, newPin: n1.value }).then(function (r) {
+          S.session.token = r.token; saveSession(); sh.close(); toast('비밀번호를 바꿨어요.');
+        });
+      }).catch(function (e) { showErr(err, errText(e)); });
+    });
+    sh = openSheet('비밀번호 변경', h('div', { class: 'stack' }, field('현재 비밀번호', oldP), field('새 비밀번호', n1), field('새 비밀번호 한 번 더', n2), err, save));
+  }
+  function saveSession() { store(SESSION_KEY, JSON.stringify(S.session)); }
+
+  // ===== 로그인 =====
+  function loadNames() {
+    S.namesErr = '';
+    return api('public.names').then(function (d) { S.names = d; }, function (e) { S.names = null; S.namesErr = errText(e); }).then(function () { if (!S.session) render(); });
+  }
+  function viewLogin() {
+    var wrap = h('div', { class: 'stack' });
+    wrap.appendChild(h('div', { class: 'brand' }, h('b', { text: 'BVD 선생님 정산' }), h('span', { text: '베스트보컬&댄스' })));
+    wrap.appendChild(demoBanner());
+    var card = h('div', { class: 'card stack' });
+    var seg = h('div', { class: 'seg' },
+      h('button', { type: 'button', 'aria-pressed': S.role === 'teacher' ? 'true' : 'false', onclick: function () { S.role = 'teacher'; render(); } }, '선생님'),
+      h('button', { type: 'button', 'aria-pressed': S.role === 'admin' ? 'true' : 'false', onclick: function () { S.role = 'admin'; render(); } }, '원장·관리자'));
+    card.appendChild(seg);
+    var list = S.names ? (S.role === 'admin' ? S.names.admins : S.names.teachers) : [];
+    var sel = h('select', { 'aria-label': '이름' }, h('option', { value: '', text: '이름을 선택하세요' }), list.map(function (n) { return h('option', { value: n, text: n }); }));
+    var last = store(LAST_KEY);
+    if (last && list.indexOf(last) >= 0) sel.value = last;
+    var pin = h('input', { type: 'password', inputmode: 'numeric', autocomplete: 'current-password', placeholder: '비밀번호 (숫자)', 'aria-label': '비밀번호' });
+    var err = errBox();
+    if (S.namesErr) showErr(err, S.namesErr);
+    var go = h('button', { class: 'btn primary block', type: 'button' }, '들어가기');
+    function submit() {
+      showErr(err, '');
+      if (!sel.value) return showErr(err, '이름을 선택해 주세요.');
+      if (!pin.value) return showErr(err, '비밀번호를 입력해 주세요.');
+      busyBtn(go, function () {
+        return api('public.login', { name: sel.value, pin: pin.value, role: S.role }).then(function (r) {
+          store(LAST_KEY, sel.value);
+          S.session = { token: r.token, role: r.role, name: r.name, id: r.id };
+          saveSession(); S.tab = r.role === 'admin' ? 'overview' : 'entry'; S.t = null; S.a = { period: null };
+          render(); loadSession();
+        });
+      }).catch(function (e) { showErr(err, errText(e)); });
+    }
+    go.addEventListener('click', submit);
+    pin.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
+    card.appendChild(field('이름', sel));
+    card.appendChild(field('비밀번호', pin));
+    card.appendChild(err);
+    card.appendChild(go);
+    if (!S.names && !S.namesErr) card.appendChild(loadingBox('이름 목록을 불러오는 중…'));
+    if (S.namesErr) card.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { loadNames(); } }, '다시 불러오기'));
+    wrap.appendChild(card);
+    wrap.appendChild(h('p', { class: 'tiny muted', text: '비밀번호를 잊으셨다면 원장님께 새 비밀번호를 받으세요.' }));
+    if (DEMO) {
+      var hint = DEMO.hints[S.role];
+      wrap.appendChild(h('div', { class: 'card flat stack' },
+        h('p', { class: 'small', text: '연습용 계정: ' + hint.name + ' / 비밀번호 ' + hint.pin }),
+        h('button', { class: 'btn small', type: 'button', onclick: function () { sel.value = hint.name; pin.value = hint.pin; } }, '연습 계정 채우기')));
+    }
+    return wrap;
+  }
+
+  // ===== 수업 입력 폼 (선생님·관리자 공용) =====
+  function lessonForm(o) {
+    var f = o.form, L = o.lesson || null, admin = !!o.admin;
+    var st = { date: L ? L.date : f.today, typeId: L ? L.typeId : '', status: L ? L.status : '', hc: (L && L.headcount) ? L.headcount : 0, memo: L ? L.memo : '' };
+    var clientId = null;
+    var root = h('div', { class: 'stack' });
+    var dateIn = h('input', { type: 'date', value: st.date, max: admin ? null : f.today, 'aria-label': '수업한 날짜' });
+    dateIn.value = st.date;
+    dateIn.addEventListener('change', function () { st.date = dateIn.value; });
+
+    var typeBtns = f.types.map(function (t) {
+      return h('button', { class: 'chip', type: 'button', 'aria-pressed': 'false', onclick: function () { st.typeId = t.id; refresh(); } }, t.name.indexOf('-') > 0 ? t.name.split('-').slice(1).join('-') : t.name);
+    });
+    var hcOut = h('output', { 'aria-live': 'polite' }, '0');
+    var hcBox = h('div', { class: 'stack' },
+      h('div', { class: 'small muted', text: '출석한 학생 수' }),
+      h('div', { class: 'stepper' },
+        h('button', { type: 'button', 'aria-label': '인원 줄이기', onclick: function () { st.hc = Math.max(0, st.hc - 1); refresh(); } }, '−'),
+        hcOut,
+        h('button', { type: 'button', 'aria-label': '인원 늘리기', onclick: function () { st.hc = Math.min(50, st.hc + 1); refresh(); } }, '+')));
+    var statusBtns = f.statuses.map(function (s) {
+      return h('button', { type: 'button', 'aria-pressed': 'false', onclick: function () { st.status = s.name; refresh(); } },
+        h('b', { text: s.label }), h('span', { text: s.pay ? '수업료 지급' : '지급 없음' }));
+    });
+    var noteEl = h('p', { class: 'small muted' });
+    var amountEl = h('div', { class: 'amount empty', 'aria-live': 'polite' });
+    var memoIn = h('input', { type: 'text', maxlength: '100', placeholder: '필요할 때만 적어 주세요', 'aria-label': '메모' });
+    memoIn.value = st.memo;
+    memoIn.addEventListener('input', function () { st.memo = memoIn.value; });
+    var err = errBox();
+    var save = h('button', { class: 'btn primary block', type: 'button' }, o.submitLabel || '저장하기');
+
+    function curType() { var r = null; f.types.forEach(function (t) { if (t.id === st.typeId) r = t; }); return r; }
+    function curStatus() { var r = null; f.statuses.forEach(function (s) { if (s.name === st.status) r = s; }); return r; }
+    function refresh() {
+      var t = curType(), s = curStatus();
+      typeBtns.forEach(function (b, i) { b.setAttribute('aria-pressed', f.types[i].id === st.typeId ? 'true' : 'false'); });
+      statusBtns.forEach(function (b, i) { b.setAttribute('aria-pressed', f.statuses[i].name === st.status ? 'true' : 'false'); });
+      hcBox.hidden = !(t && t.mode === 'tiered');
+      hcOut.textContent = st.hc ? st.hc + '명' : '0명';
+      noteEl.textContent = s ? s.note : '';
+      noteEl.hidden = !s;
+      amountEl.className = 'amount empty';
+      if (!t || !s) { amountEl.textContent = ''; amountEl.appendChild(h('strong', { text: '수업 종류와 결과를 고르면 금액이 바로 보여요' })); return; }
+      var c = R.calcLesson(s, t.rate, t.mode === 'tiered' ? st.hc : null);
+      amountEl.textContent = '';
+      if (c.reason === 'need_headcount') { amountEl.className = 'amount empty'; amountEl.appendChild(h('strong', { text: '출석 인원을 입력하면 금액이 보여요' })); }
+      else if (c.reason === 'no_rate') { amountEl.className = 'amount warnbox'; amountEl.appendChild(h('small', { text: '이번 수업 금액' })); amountEl.appendChild(h('strong', { text: '단가 미설정 — 원장님이 단가를 넣으면 자동으로 채워져요' })); }
+      else { amountEl.className = 'amount'; amountEl.appendChild(h('small', { text: c.pay ? '이번 수업 금액' : '이번 수업 금액 (지급 없음)' })); amountEl.appendChild(h('strong', { text: won(c.amount) })); }
+    }
+
+    save.addEventListener('click', function () {
+      showErr(err, '');
+      var t = curType();
+      if (!st.date) return showErr(err, '날짜를 선택해 주세요.');
+      if (!t) return showErr(err, '수업 종류를 선택해 주세요.');
+      if (t.mode === 'tiered' && !(st.hc >= 1)) return showErr(err, '출석 인원을 입력해 주세요.');
+      if (!st.status) return showErr(err, '수업 결과를 선택해 주세요.');
+      var p = { date: st.date, typeId: st.typeId, status: st.status, memo: st.memo };
+      if (t.mode === 'tiered') p.headcount = st.hc;
+      if (L) p.recordId = L.recordId; else { if (!clientId) clientId = uid(); p.clientId = clientId; }
+      busyBtn(save, function () {
+        return o.onSubmit(p).then(function (res) {
+          clientId = null;
+          var c = R.calcLesson(curStatus(), t.rate, t.mode === 'tiered' ? st.hc : null);
+          if (o.reset) { st.status = ''; st.hc = 0; st.memo = ''; memoIn.value = ''; refresh(); }
+          o.onDone(res, p, c);
+        });
+      }).catch(function (e) { showErr(err, errText(e)); });
+    });
+
+    root.appendChild(field('수업한 날', dateIn));
+    var groupNames = [], groupBoxes = {};
+    f.types.forEach(function (t, i) {
+      var g = t.name.indexOf('-') > 0 ? t.name.split('-')[0] : '기타';
+      if (!groupBoxes[g]) { groupBoxes[g] = h('div', { class: 'chips' }); groupNames.push(g); }
+      groupBoxes[g].appendChild(typeBtns[i]);
+    });
+    root.appendChild(h('div', { class: 'stack' }, h('div', { class: 'small muted', text: '수업 종류' }),
+      groupNames.map(function (g) { return h('div', { class: 'stack', style: 'gap:6px' }, h('div', { class: 'tiny', style: 'font-weight:700', text: g }), groupBoxes[g]); })));
+    root.appendChild(hcBox);
+    root.appendChild(h('div', { class: 'stack' }, h('div', { class: 'small muted', text: '수업 결과' }), h('div', { class: 'statuses' }, statusBtns), noteEl));
+    root.appendChild(amountEl);
+    root.appendChild(field('메모 (선택)', memoIn));
+    root.appendChild(err);
+    root.appendChild(save);
+    refresh();
+    return root;
+  }
+
+  // ===== 선생님 화면 =====
+  function loadT(period) {
+    return api('me.period', period ? { period: period } : {}).then(function (d) { S.t = d; render(); }, function (e) {
+      if (S.session) { S.tErr = errText(e); render(); }
+    });
+  }
+  function loadSession() {
+    if (!S.session) return;
+    if (S.session.role === 'admin') loadAdmin(); else loadT();
+  }
+  function lineItem(l, opts) {
+    var tags = [];
+    if (l.needsReview && opts.showReview) tags.push(h('span', { class: 'tag warn', text: '확인 중' }));
+    if (l.verified && opts.showVerified) tags.push(h('span', { class: 'tag ok', text: '확인됨' }));
+    if (opts.disputed && opts.disputed[l.recordId]) tags.push(h('span', { class: 'tag bad', text: '이의 접수' }));
+    if (l.frozen) tags.push(h('span', { class: 'tag mute', text: '마감' }));
+    var amtCls = l.amount === null ? 'amt unset' : (l.amount === 0 ? 'amt zero' : 'amt');
+    var title = l.typeName + (l.headcount ? ' · ' + l.headcount + '명' : '');
+    return h('button', { class: 'item', type: 'button', onclick: function () { opts.onTap(l); } },
+      h('div', { class: 'main' },
+        h('b', { text: (opts.showName ? l.name + ' · ' : '') + title }),
+        h('span', { class: 'tiny muted' }, tags, l.statusLabel, l.memo ? ' · ' + l.memo : '')),
+      h('span', { class: amtCls, text: l.amount === null ? '단가 미설정' : (l.amount === 0 ? '0원' : won(l.amount)) }));
+  }
+  function groupedLessons(list, opts) {
+    var box = h('div', { class: 'list' }), lastDate = '';
+    list.forEach(function (l) {
+      if (l.date !== lastDate) { box.appendChild(h('div', { class: 'datehead', text: dateLabel(l.date) })); lastDate = l.date; }
+      box.appendChild(lineItem(l, opts));
+    });
+    return box;
+  }
+
+  function viewTeacher() {
+    var wrap = h('div', { class: 'stack' });
+    wrap.appendChild(header(S.t ? monthLabel(S.t.period.key) + ' · ' + rangeLabel(S.t.period) : ''));
+    wrap.appendChild(demoBanner());
+    wrap.appendChild(tabsBar([['entry', '수업 입력'], ['month', '내 정산']], S.tab, function (t) { S.tab = t; render(); }));
+    if (!S.t) {
+      if (S.tErr) { wrap.appendChild(h('div', { class: 'err', text: S.tErr })); wrap.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { S.tErr = ''; render(); loadT(); } }, '다시 불러오기')); }
+      else wrap.appendChild(loadingBox());
+      return wrap;
+    }
+    wrap.appendChild(S.tab === 'month' ? teacherMonth() : teacherEntry());
+    return wrap;
+  }
+
+  function teacherEntry() {
+    var d = S.t, box = h('div', { class: 'stack' });
+    box.appendChild(h('div', { class: 'card stack' },
+      h('h2', { text: '방금 한 수업 기록하기' }),
+      lessonForm({
+        form: d.form, reset: true, submitLabel: '저장하기',
+        onSubmit: function (p) { return api('me.addLesson', p); },
+        onDone: function (res, p, c) {
+          var inPeriod = p.date >= d.period.start && p.date <= d.period.end;
+          var msg = '저장했어요 · ' + (c.amount === null ? '단가 미설정' : won(c.amount));
+          if (!inPeriod) msg += ' (다른 정산 기간에 저장됨)';
+          toast(msg);
+          loadT(d.period.key);
+        }
+      })));
+    var recent = d.lessons.slice(0, 5);
+    box.appendChild(h('div', { class: 'card stack' },
+      h('div', { class: 'row' }, h('h2', { class: 'grow', text: '이번 정산 합계' }), h('button', { class: 'linkbtn', type: 'button', onclick: function () { S.tab = 'month'; render(); } }, '전체 보기')),
+      h('div', { class: 'summary' }, h('span', { class: 'big', text: won(d.totals.amount) }), h('span', { class: 'small muted', text: d.totals.count + '건 · 지급일 ' + shortDate(d.period.payDate) })),
+      recent.length ? [h('hr', { class: 'sep' }), groupedLessons(recent, lessonOpts(d))] : h('p', { class: 'small muted', text: '아직 입력한 수업이 없어요.' })));
+    return box;
+  }
+  function lessonOpts(d) {
+    var disputed = {};
+    d.disputes.forEach(function (x) { if (x.state === 'open' && x.recordId) disputed[x.recordId] = true; });
+    return { showReview: true, disputed: disputed, onTap: function (l) { teacherLessonSheet(l); } };
+  }
+
+  function teacherMonth() {
+    var d = S.t, box = h('div', { class: 'stack' });
+    box.appendChild(periodSelect(d.periods, d.period.key, function (k) { S.t = null; render(); loadT(k); }));
+    var cf = d.confirm, closed = d.period.closed;
+    var summary = h('div', { class: 'card stack' },
+      h('div', { class: 'summary' },
+        h('span', { class: 'small muted', text: rangeLabel(d.period) + ' 수업 · 지급일 ' + d.period.payDate.replace(/-/g, '.') }),
+        h('span', { class: 'big', text: won(d.totals.amount) }),
+        h('span', { class: 'small muted', text: '수업 ' + d.totals.count + '건 · 지급 대상 ' + d.totals.payCount + '건' })));
+    if (d.totals.missing) summary.appendChild(h('div', { class: 'note', text: '단가가 아직 정해지지 않은 수업이 ' + d.totals.missing + '건 있어요. 원장님이 단가를 입력하면 금액이 채워져요.' }));
+    if (closed) summary.appendChild(h('div', { class: 'okbox', text: '마감된 정산입니다. 수정이 필요하면 이의 신청을 남겨 주세요.' }));
+    box.appendChild(summary);
+
+    if (d.lessons.length) box.appendChild(h('div', { class: 'card' }, groupedLessons(d.lessons, lessonOpts(d))));
+    else box.appendChild(h('div', { class: 'card muted', text: '이 기간에 입력한 수업이 없어요.' }));
+
+    var actions = h('div', { class: 'card stack' }, h('h2', { text: '금액 확인' }));
+    var openD = d.disputes.filter(function (x) { return x.state === 'open'; }).length;
+    if (cf.state === 'confirmed') actions.appendChild(h('div', { class: 'okbox', text: '✓ ' + stamp(cf.at) + '에 금액을 확인했어요.' }));
+    else if (cf.state === 'stale') actions.appendChild(h('div', { class: 'note', text: '확인한 뒤에 수업 내용이 바뀌었어요. 금액을 다시 확인해 주세요.' }));
+    else actions.appendChild(h('p', { class: 'small muted', text: '내용과 금액이 맞으면 확인 버튼을 눌러 주세요. 다르면 이의 신청을 남겨 주세요.' }));
+    if (!closed && cf.state !== 'confirmed') {
+      var conf = h('button', { class: 'btn primary block', type: 'button' }, '금액이 맞아요');
+      var cerr = errBox();
+      conf.addEventListener('click', function () {
+        busyBtn(conf, function () { return api('me.confirm', { period: d.period.key }).then(function () { toast('확인했어요. 감사합니다.'); return loadT(d.period.key); }); })
+          .catch(function (e) { showErr(cerr, errText(e)); });
+      });
+      if (openD || d.totals.missing || !d.totals.count) conf.disabled = true;
+      actions.appendChild(conf); actions.appendChild(cerr);
+      if (openD) actions.appendChild(h('p', { class: 'tiny muted', text: '이의 신청이 처리되면 확인할 수 있어요.' }));
+    }
+    actions.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { disputeSheet(null); } }, '이의 신청하기'));
+    box.appendChild(actions);
+
+    if (d.disputes.length) {
+      box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '내 이의 신청' }), h('div', { class: 'list' }, d.disputes.map(function (x) {
+        return h('div', { class: 'item' }, h('div', { class: 'main' },
+          h('b', { text: x.reason }),
+          x.memo ? h('span', { class: 'tiny muted', text: x.memo }) : null,
+          x.resolveNote ? h('span', { class: 'tiny', text: '답변: ' + x.resolveNote }) : null),
+          h('span', { class: 'tag ' + (x.state === 'open' ? 'warn' : 'ok'), text: x.state === 'open' ? '처리 중' : '처리 완료' }));
+      }))));
+    }
+    return box;
+  }
+
+  function teacherLessonSheet(l) {
+    var d = S.t, body = h('div', { class: 'stack' }), sh;
+    body.appendChild(h('div', { class: 'card flat stack' },
+      h('b', { text: dateLabel(l.date) + ' · ' + l.typeName + (l.headcount ? ' · ' + l.headcount + '명' : '') }),
+      h('span', { class: 'small muted', text: l.statusLabel + (l.memo ? ' · ' + l.memo : '') }),
+      h('b', { class: 'num', text: l.amount === null ? '단가 미설정' : won(l.amount) })));
+    if (!l.frozen) {
+      body.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { sh.close(); teacherEditSheet(l); } }, '수정하기'));
+      body.appendChild(deleteControl(function () { return api('me.voidLesson', { recordId: l.recordId }); }, function () { sh.close(); toast('삭제했어요.'); loadT(d.period.key); }));
+    }
+    body.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { sh.close(); disputeSheet(l); } }, '이 수업 이의 신청'));
+    sh = openSheet('수업 내용', body);
+  }
+  function deleteControl(doIt, after) {
+    var box = h('div', { class: 'stack' }), err = errBox();
+    var first = h('button', { class: 'btn danger block', type: 'button' }, '삭제하기');
+    var ask = h('div', { class: 'stack', hidden: true },
+      h('p', { class: 'small', text: '정말 삭제할까요? 삭제한 수업은 정산에서 빠집니다.' }));
+    var yes = h('button', { class: 'btn danger block', type: 'button' }, '네, 삭제합니다');
+    var no = h('button', { class: 'btn block', type: 'button', onclick: function () { ask.hidden = true; first.hidden = false; } }, '아니요');
+    ask.appendChild(yes); ask.appendChild(no);
+    first.addEventListener('click', function () { first.hidden = true; ask.hidden = false; });
+    yes.addEventListener('click', function () {
+      busyBtn(yes, function () { return doIt().then(after); }).catch(function (e) { showErr(err, errText(e)); });
+    });
+    box.appendChild(first); box.appendChild(ask); box.appendChild(err);
+    return box;
+  }
+  function teacherEditSheet(l) {
+    var d = S.t, sh;
+    var form = lessonForm({
+      form: d.form, lesson: l, submitLabel: '수정 저장',
+      onSubmit: function (p) { return api('me.editLesson', p); },
+      onDone: function () { sh.close(); toast('수정했어요.'); loadT(d.period.key); }
+    });
+    sh = openSheet('수업 수정', form);
+  }
+  function disputeSheet(l) {
+    var d = S.t, st = { reason: '' }, sh;
+    var reasons = d.form.reasons;
+    var btns = reasons.map(function (r) { return h('button', { class: 'chip', type: 'button', 'aria-pressed': 'false', onclick: function () { st.reason = r; btns.forEach(function (b, i) { b.setAttribute('aria-pressed', reasons[i] === r ? 'true' : 'false'); }); } }, r); });
+    var memo = h('textarea', { maxlength: '200', placeholder: '무엇이 다른지 알려 주세요. (예: 11/7 오후 수업이 빠졌어요)' });
+    var err = errBox();
+    var send = h('button', { class: 'btn primary block', type: 'button' }, '이의 보내기');
+    send.addEventListener('click', function () {
+      showErr(err, '');
+      if (!st.reason) return showErr(err, '사유를 하나 골라 주세요.');
+      busyBtn(send, function () {
+        return api('me.dispute', { period: d.period.key, recordId: l ? l.recordId : '', reason: st.reason, memo: memo.value }).then(function () { sh.close(); toast('이의를 보냈어요. 원장님이 확인합니다.'); return loadT(d.period.key); });
+      }).catch(function (e) { showErr(err, errText(e)); });
+    });
+    sh = openSheet('이의 신청', h('div', { class: 'stack' },
+      l ? h('div', { class: 'card flat small', text: dateLabel(l.date) + ' · ' + l.typeName + (l.headcount ? ' · ' + l.headcount + '명' : '') + ' · ' + l.statusLabel }) : h('p', { class: 'small muted', text: monthLabel(d.period.key) + ' 정산 전체에 대한 이의입니다.' }),
+      h('div', { class: 'chips' }, btns), field('내용', memo), err, send));
+  }
+
+  // ===== 관리자 화면 =====
+  function loadAdmin() {
+    var a = S.a || (S.a = {}), tab = S.tab || 'overview', p;
+    a.err = '';
+    if (tab === 'overview') p = api('admin.overview', a.period ? { period: a.period } : {}).then(function (d) { a.overview = d; a.period = d.period.key; });
+    else if (tab === 'detail') p = api('admin.lessons', { period: a.period, acctId: a.acctId }).then(function (d) { a.detail = d; });
+    else if (tab === 'disputes') p = api('admin.disputes', { all: !!a.allDisputes }).then(function (d) { a.disputes = d.disputes; });
+    else if (tab === 'teachers') p = api('admin.teachers').then(function (d) { a.accounts = d.accounts; });
+    else if (tab === 'rates') p = api('admin.rates').then(function (d) { a.rates = d; });
+    else if (tab === 'settings') p = api('admin.settings').then(function (d) { a.settings = d.settings; });
+    else p = Promise.resolve();
+    // 이의 배지는 어느 탭에서든 최신으로 유지
+    var badge = (tab === 'disputes') ? Promise.resolve() : api('admin.disputes', {}).then(function (d) { a.openCount = d.disputes.length; }, function () {});
+    return Promise.all([p, badge]).then(function () { render(); }, function (e) { a.err = errText(e); render(); });
+  }
+  function goAdmin(tab, extra) {
+    var a = S.a;
+    if (extra) Object.keys(extra).forEach(function (k) { a[k] = extra[k]; });
+    S.tab = tab; render(); loadAdmin();
+  }
+
+  function viewAdmin() {
+    var a = S.a || (S.a = {}), wrap = h('div', { class: 'stack' });
+    wrap.appendChild(header('정산·선생님 관리'));
+    wrap.appendChild(demoBanner());
+    var cur = S.tab === 'detail' ? 'overview' : S.tab;
+    wrap.appendChild(tabsBar([['overview', '정산'], ['disputes', '이의', a.openCount || 0], ['teachers', '선생님'], ['rates', '단가'], ['settings', '설정']], cur, function (t) { goAdmin(t); }));
+    if (a.err) {
+      wrap.appendChild(h('div', { class: 'err', text: a.err }));
+      wrap.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { loadAdmin(); } }, '다시 불러오기'));
+      return wrap;
+    }
+    var body;
+    if (S.tab === 'overview') body = a.overview ? adminOverview() : null;
+    else if (S.tab === 'detail') body = a.detail ? adminDetail() : null;
+    else if (S.tab === 'disputes') body = a.disputes ? adminDisputes() : null;
+    else if (S.tab === 'teachers') body = a.accounts ? adminTeachers() : null;
+    else if (S.tab === 'rates') body = a.rates ? adminRates() : null;
+    else if (S.tab === 'settings') body = a.settings ? adminSettings() : null;
+    wrap.appendChild(body || loadingBox());
+    return wrap;
+  }
+
+  function adminOverview() {
+    var a = S.a, d = a.overview, per = d.period, tax = d.settings.withholdingRate > 0, box = h('div', { class: 'stack' });
+    box.appendChild(h('div', { class: 'row' },
+      h('div', { class: 'grow' }, periodSelect(d.periods, per.key, function (k) { a.period = k; a.overview = null; render(); loadAdmin(); })),
+      per.closed ? h('span', { class: 'tag ok', text: '마감됨' }) : (per.ended ? h('span', { class: 'tag warn', text: '마감 대기' }) : h('span', { class: 'tag', text: '진행 중' }))));
+    box.appendChild(h('div', { class: 'card summary' },
+      h('span', { class: 'small muted', text: rangeLabel(per) + ' 수업 · 지급일 ' + per.payDate.replace(/-/g, '.') }),
+      h('span', { class: 'big', text: won(d.sum.amount) }),
+      h('span', { class: 'small muted', text: '선생님 ' + d.rows.length + '명 · 수업 ' + d.sum.count + '건' + (tax ? ' · 원천징수 후 ' + won(d.sum.net) : '') })));
+    var alerts = [];
+    if (d.sum.openDisputes) alerts.push('이의 신청 ' + d.sum.openDisputes + '건이 처리를 기다립니다.');
+    if (d.sum.missing) alerts.push('단가가 없는 수업이 ' + d.sum.missing + '건 있습니다. [단가] 탭에서 입력해 주세요.');
+    if (d.sum.review) alerts.push('원장님 확인이 필요한 수업(결강·보강)이 ' + d.sum.review + '건 있습니다.');
+    if (alerts.length && !per.closed) box.appendChild(h('div', { class: 'note stack' }, alerts.map(function (t) { return h('div', { text: '• ' + t }); })));
+
+    var head = ['선생님', '수업', '지급액'];
+    if (tax) head = head.concat(['실지급']);
+    head.push('상태');
+    var rows = d.rows.map(function (r) {
+      var tags = [];
+      if (r.openDisputes) tags.push(h('span', { class: 'tag bad', text: '이의 ' + r.openDisputes }));
+      if (r.missing) tags.push(h('span', { class: 'tag warn', text: '단가없음 ' + r.missing }));
+      if (r.review) tags.push(h('span', { class: 'tag warn', text: '확인필요 ' + r.review }));
+      tags.push(h('span', { class: 'tag ' + (r.confirm === 'confirmed' ? 'ok' : (r.confirm === 'stale' ? 'warn' : 'mute')), text: r.confirm === 'confirmed' ? '본인확인' : (r.confirm === 'stale' ? '수정됨' : '미확인') }));
+      var cells = [
+        h('td', null, h('button', { class: 'namebtn', type: 'button', onclick: function () { goAdmin('detail', { acctId: r.acctId, detail: null }); } }, r.name + (r.status !== '활성' ? ' (퇴직)' : ''))),
+        h('td', { class: 'n', text: String(r.count) }), h('td', { class: 'n', text: won(r.amount) })];
+      if (tax) cells.push(h('td', { class: 'n', text: won(r.net) }));
+      cells.push(h('td', null, tags));
+      return h('tr', null, cells);
+    });
+    var foot = [h('td', { text: '합계' }), h('td', { class: 'n', text: String(d.sum.count) }), h('td', { class: 'n', text: won(d.sum.amount) })];
+    if (tax) foot.push(h('td', { class: 'n', text: won(d.sum.net) }));
+    foot.push(h('td'));
+    if (d.rows.length) box.appendChild(h('div', { class: 'tablewrap' }, h('table', null, h('thead', null, h('tr', null, head.map(function (t, i) { return h('th', { class: i === 1 || i === 2 || (tax && i === 3) ? 'n' : '', text: t }); }))), h('tbody', null, rows), h('tfoot', null, h('tr', null, foot)))));
+    else box.appendChild(h('div', { class: 'card muted', text: '이 기간에 입력된 수업이 없습니다.' }));
+
+    var exp = h('div', { class: 'card stack' }, h('h2', { text: '세무사님께 보낼 표' }),
+      h('p', { class: 'small muted', text: '엑셀에서 바로 열리는 CSV 파일입니다. 마감하면 구글 시트에도 "정산_' + per.key + '" 탭이 만들어집니다.' }),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn small', type: 'button', onclick: function () { exportSheet(per.key, 'summary'); } }, '강사별 합계표'),
+        h('button', { class: 'btn small', type: 'button', onclick: function () { exportSheet(per.key, 'detail'); } }, '수업별 내역')));
+    box.appendChild(exp);
+
+    var close = h('div', { class: 'card stack' }, h('h2', { text: per.closed ? '마감됨' : '정산 마감' }));
+    if (per.closed) {
+      close.appendChild(h('p', { class: 'small muted', text: '이 기간의 금액은 마감 시점으로 고정되어 있습니다. 단가를 바꿔도 달라지지 않습니다.' }));
+      close.appendChild(reopenControl(per.key));
+    } else {
+      close.appendChild(h('p', { class: 'small muted', text: '마감하면 이 기간의 수업과 금액이 고정되고 선생님은 더 이상 고칠 수 없습니다. 잘못되면 마감을 취소할 수 있습니다.' }));
+      close.appendChild(h('button', { class: 'btn primary block', type: 'button', onclick: function () { closeSheet(per.key); } }, '이 기간 마감하기'));
+    }
+    box.appendChild(close);
+    return box;
+  }
+
+  function exportSheet(period, kind) {
+    var body = h('div', { class: 'stack' }, loadingBox());
+    var sh = openSheet(kind === 'detail' ? '수업별 내역' : '강사별 합계표', body);
+    api('admin.export', { period: period, kind: kind }).then(function (r) {
+      body.textContent = '';
+      body.appendChild(h('div', { class: 'pre', text: r.csv }));
+      body.appendChild(h('div', { class: 'row' },
+        h('button', { class: 'btn primary grow', type: 'button', onclick: function () { downloadText(r.filename, r.csv); } }, '파일로 내려받기'),
+        h('button', { class: 'btn grow', type: 'button', onclick: function () { copyText(r.csv, '복사했어요. 엑셀·시트에 붙여 넣으세요.'); } }, '복사')));
+    }, function (e) { body.textContent = ''; body.appendChild(h('div', { class: 'err', text: errText(e) })); });
+    return sh;
+  }
+  function closeSheet(period) {
+    var body = h('div', { class: 'stack' }), err = errBox(), sh;
+    body.appendChild(h('p', { text: monthLabel(period) + ' 정산을 마감할까요?' }));
+    var warnBox = h('div', { class: 'note stack', hidden: true });
+    var go = h('button', { class: 'btn primary block', type: 'button' }, '마감하기');
+    function run(force) {
+      showErr(err, '');
+      busyBtn(go, function () {
+        return api('admin.close', { period: period, force: force }).then(function (r) {
+          sh.close(); toast('마감했어요 · ' + r.count + '건 · ' + won(r.amount)); S.a.overview = null; render(); loadAdmin();
+        });
+      }).catch(function (e) {
+        if (e.code === 'needs_confirm') {
+          warnBox.hidden = false; warnBox.textContent = '';
+          (e.warnings || []).forEach(function (w) { warnBox.appendChild(h('div', { text: '• ' + w })); });
+          go.textContent = '확인했습니다. 그래도 마감'; go.onclick = null;
+          go.replaceWith(go2());
+        } else showErr(err, errText(e));
+      });
+    }
+    function go2() {
+      var b = h('button', { class: 'btn primary block', type: 'button' }, '확인했습니다. 그래도 마감하기');
+      b.addEventListener('click', function () {
+        busyBtn(b, function () {
+          return api('admin.close', { period: period, force: true }).then(function (r) { sh.close(); toast('마감했어요 · ' + r.count + '건 · ' + won(r.amount)); S.a.overview = null; render(); loadAdmin(); });
+        }).catch(function (e) { showErr(err, errText(e)); });
+      });
+      return b;
+    }
+    go.addEventListener('click', function () { run(false); });
+    body.appendChild(warnBox); body.appendChild(err); body.appendChild(go);
+    sh = openSheet('정산 마감', body);
+  }
+  function reopenControl(period) {
+    var box = h('div', { class: 'stack' }), err = errBox();
+    var first = h('button', { class: 'btn danger block', type: 'button' }, '마감 취소하기');
+    var ask = h('div', { class: 'stack', hidden: true }, h('p', { class: 'small', text: '마감을 취소하면 선생님이 다시 수정할 수 있고, 금액은 현재 단가로 다시 계산됩니다.' }));
+    var yes = h('button', { class: 'btn danger block', type: 'button' }, '네, 마감을 취소합니다');
+    ask.appendChild(yes); ask.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { ask.hidden = true; first.hidden = false; } }, '아니요'));
+    first.addEventListener('click', function () { first.hidden = true; ask.hidden = false; });
+    yes.addEventListener('click', function () {
+      busyBtn(yes, function () { return api('admin.reopen', { period: period }).then(function () { toast('마감을 취소했어요.'); S.a.overview = null; render(); loadAdmin(); }); })
+        .catch(function (e) { showErr(err, errText(e)); });
+    });
+    box.appendChild(first); box.appendChild(ask); box.appendChild(err);
+    return box;
+  }
+
+  function adminDetail() {
+    var a = S.a, d = a.detail, box = h('div', { class: 'stack' });
+    box.appendChild(h('div', { class: 'row' },
+      h('button', { class: 'btn small', type: 'button', onclick: function () { goAdmin('overview'); } }, '← 목록'),
+      h('h2', { class: 'grow', text: d.teacher.name + (d.teacher.status !== '활성' ? ' (퇴직)' : '') })));
+    box.appendChild(h('div', { class: 'card summary' },
+      h('span', { class: 'small muted', text: monthLabel(d.period.key) + ' · ' + rangeLabel(d.period) }),
+      h('span', { class: 'big', text: won(d.totals.amount) }),
+      h('span', { class: 'small muted', text: '수업 ' + d.totals.count + '건 · 본인 확인: ' + (d.confirm.state === 'confirmed' ? '완료 (' + stamp(d.confirm.at) + ')' : (d.confirm.state === 'stale' ? '수정 후 재확인 필요' : '아직')) })));
+    var pending = d.lessons.filter(function (l) { return l.needsReview; });
+    var tools = h('div', { class: 'row' });
+    if (!d.period.closed) {
+      tools.appendChild(h('button', { class: 'btn small primary', type: 'button', onclick: function () { addForTeacherSheet(d); } }, '+ 수업 대신 입력'));
+      if (pending.length) tools.appendChild(h('button', { class: 'btn small', type: 'button', onclick: function (ev) {
+        var b = ev.currentTarget;
+        busyBtn(b, function () { return api('admin.verify', { recordIds: pending.map(function (l) { return l.recordId; }) }).then(function (r) { toast(r.verified + '건을 확인 처리했어요.'); loadAdmin(); }); }).catch(function (e) { toast(errText(e)); });
+      } }, '확인필요 ' + pending.length + '건 모두 확인'));
+    }
+    box.appendChild(tools);
+    if (d.lessons.length) box.appendChild(h('div', { class: 'card' }, groupedLessons(d.lessons, { showReview: true, showVerified: true, onTap: function (l) { adminLessonSheet(l, d); } })));
+    else box.appendChild(h('div', { class: 'card muted', text: '이 기간에 입력된 수업이 없습니다.' }));
+    return box;
+  }
+  function addForTeacherSheet(d) {
+    var sh;
+    var form = lessonForm({
+      form: d.form, admin: true, reset: true, submitLabel: '저장하기',
+      onSubmit: function (p) { p.acctId = d.teacher.id; return api('admin.addLesson', p); },
+      onDone: function (res, p, c) { toast('저장했어요 · ' + (c.amount === null ? '단가 미설정' : won(c.amount))); loadAdmin(); }
+    });
+    sh = openSheet(d.teacher.name + ' 선생님 수업 입력', form);
+  }
+  function adminLessonSheet(l, d) {
+    var body = h('div', { class: 'stack' }), sh;
+    body.appendChild(h('div', { class: 'card flat stack' },
+      h('b', { text: dateLabel(l.date) + ' · ' + l.typeName + (l.headcount ? ' · ' + l.headcount + '명' : '') }),
+      h('span', { class: 'small muted', text: l.statusLabel + (l.memo ? ' · ' + l.memo : '') }),
+      h('b', { class: 'num', text: l.amount === null ? '단가 미설정' : won(l.amount) })));
+    if (!l.frozen) {
+      if (l.needsReview) {
+        var ver = h('button', { class: 'btn primary block', type: 'button' }, '확인 완료');
+        ver.addEventListener('click', function () { busyBtn(ver, function () { return api('admin.verify', { recordId: l.recordId }).then(function () { sh.close(); toast('확인 처리했어요.'); loadAdmin(); }); }).catch(function (e) { toast(errText(e)); }); });
+        body.appendChild(ver);
+      }
+      body.appendChild(h('button', { class: 'btn block', type: 'button', onclick: function () { sh.close(); adminEditSheet(l, d); } }, '수정하기'));
+      body.appendChild(deleteControl(function () { return api('admin.voidLesson', { recordId: l.recordId }); }, function () { sh.close(); toast('삭제했어요.'); loadAdmin(); }));
+    } else body.appendChild(h('p', { class: 'small muted', text: '마감된 기간입니다. 수정하려면 먼저 마감을 취소해 주세요.' }));
+    sh = openSheet('수업 내용', body);
+  }
+  function adminEditSheet(l, d) {
+    var sh;
+    var form = lessonForm({
+      form: d.form, lesson: l, admin: true, submitLabel: '수정 저장',
+      onSubmit: function (p) { return api('admin.editLesson', p); },
+      onDone: function () { sh.close(); toast('수정했어요.'); loadAdmin(); }
+    });
+    sh = openSheet('수업 수정', form);
+  }
+
+  function adminDisputes() {
+    var a = S.a, box = h('div', { class: 'stack' });
+    box.appendChild(h('div', { class: 'row' }, h('h2', { class: 'grow', text: a.allDisputes ? '모든 이의 신청' : '처리할 이의 신청' }),
+      h('button', { class: 'btn small', type: 'button', onclick: function () { a.allDisputes = !a.allDisputes; a.disputes = null; render(); loadAdmin(); } }, a.allDisputes ? '처리 대기만 보기' : '처리 완료도 보기')));
+    if (!a.disputes.length) box.appendChild(h('div', { class: 'card muted', text: '처리할 이의 신청이 없습니다.' }));
+    a.disputes.forEach(function (d) {
+      var card = h('div', { class: 'card stack' });
+      card.appendChild(h('div', { class: 'row' }, h('b', { class: 'grow', text: d.name + ' · ' + monthLabel(d.period) }), h('span', { class: 'tag ' + (d.state === 'open' ? 'warn' : 'ok'), text: d.state === 'open' ? '처리 대기' : '처리 완료' })));
+      card.appendChild(h('div', null, h('b', { text: d.reason }), d.memo ? h('p', { class: 'small', text: d.memo }) : null, h('span', { class: 'tiny muted', text: stamp(d.ts) })));
+      if (d.lesson) card.appendChild(h('div', { class: 'card flat small', text: '대상 수업: ' + dateLabel(d.lesson.date) + ' · ' + d.lesson.typeName + (d.lesson.headcount ? ' · ' + d.lesson.headcount + '명' : '') + ' · ' + d.lesson.statusLabel + ' · ' + (d.lesson.amount === null ? '단가 미설정' : won(d.lesson.amount)) }));
+      if (d.state === 'open') {
+        var note = h('input', { type: 'text', maxlength: '200', placeholder: '선생님께 남길 답변 (선택)', 'aria-label': '답변' });
+        var done = h('button', { class: 'btn primary', type: 'button' }, '처리 완료');
+        done.addEventListener('click', function () { busyBtn(done, function () { return api('admin.resolveDispute', { id: d.id, note: note.value }).then(function () { toast('처리 완료로 바꿨어요.'); loadAdmin(); }); }).catch(function (e) { toast(errText(e)); }); });
+        card.appendChild(note);
+        card.appendChild(h('div', { class: 'row' }, done, h('button', { class: 'btn', type: 'button', onclick: function () { goAdmin('detail', { acctId: d.acctId, period: d.period, detail: null }); } }, '선생님 수업 보기')));
+      } else if (d.resolveNote) card.appendChild(h('p', { class: 'small', text: '답변: ' + d.resolveNote }));
+      box.appendChild(card);
+    });
+    box.appendChild(h('p', { class: 'tiny muted', text: '수업 내용을 고친 뒤 [처리 완료]를 눌러 주세요. 처리 완료 전에는 선생님이 금액을 확인할 수 없습니다.' }));
+    return box;
+  }
+
+  function pinListBox(created, title) {
+    var text = created.map(function (c) { return c.name + ' ' + c.pin; }).join('\n');
+    return h('div', { class: 'card stack' },
+      h('h2', { text: title }),
+      h('p', { class: 'small muted', text: '비밀번호는 지금 한 번만 보입니다. 복사해서 각 선생님께 전달해 주세요. (선생님이 앱에서 직접 바꿀 수 있습니다)' }),
+      h('div', { class: 'pins' }, created.map(function (c) { return h('div', null, h('span', { text: c.name }), h('b', { text: c.pin })); })),
+      h('button', { class: 'btn small', type: 'button', onclick: function () { copyText(text, '복사했어요.'); } }, '전체 복사'));
+  }
+  function adminTeachers() {
+    var a = S.a, box = h('div', { class: 'stack' });
+    if (a.newPins) box.appendChild(pinListBox(a.newPins.list, a.newPins.title));
+    var names = h('textarea', { placeholder: '이름을 한 줄에 한 명씩 (또는 쉼표로 구분)\n예) 홍길동', 'aria-label': '추가할 선생님 이름' });
+    var active = a.accounts.filter(function (x) { return x.status === '활성' && x.role === 'teacher'; });
+    var copy = h('select', { 'aria-label': '단가 복사' }, h('option', { value: '', text: '단가를 복사하지 않음 (기본 단가 사용)' }), active.map(function (x) { return h('option', { value: x.id, text: x.name + ' 선생님과 같은 단가' }); }));
+    var err = errBox();
+    var addBtn = h('button', { class: 'btn primary block', type: 'button' }, '선생님 추가');
+    addBtn.addEventListener('click', function () {
+      showErr(err, '');
+      var list = names.value.split(/[\n,]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+      if (!list.length) return showErr(err, '이름을 입력해 주세요.');
+      busyBtn(addBtn, function () {
+        return api('admin.addAccounts', { names: list, copyFromId: copy.value || undefined }).then(function (r) {
+          a.newPins = { list: r.created, title: r.created.length + '명을 추가했어요' }; toast('추가했어요.'); loadAdmin();
+        });
+      }).catch(function (e) { showErr(err, errText(e)); });
+    });
+    box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '새 선생님 추가' }), field('이름', names), field('단가', copy), err, addBtn));
+
+    var rows = a.accounts.map(function (x) {
+      var isMe = x.id === S.session.id;
+      var actions = h('div', { class: 'row' });
+      if (x.status === '활성') {
+        actions.appendChild(h('button', { class: 'btn small', type: 'button', onclick: function () { pinResetSheet(x); } }, '비밀번호 재설정'));
+        actions.appendChild(h('button', { class: 'btn small', type: 'button', onclick: function () { renameSheet(x); } }, '이름 변경'));
+        if (!isMe) actions.appendChild(h('button', { class: 'btn small danger', type: 'button', onclick: function () { retireSheet(x); } }, '퇴직 처리'));
+      } else {
+        actions.appendChild(h('button', { class: 'btn small', type: 'button', onclick: function (ev) { busyBtn(ev.currentTarget, function () { return api('admin.reactivate', { acctId: x.id }).then(function () { toast('다시 활성화했어요.'); loadAdmin(); }); }).catch(function (e) { toast(errText(e)); }); } }, '다시 근무'));
+      }
+      return h('div', { class: 'item', style: 'align-items:flex-start;flex-wrap:wrap' },
+        h('div', { class: 'main' }, h('b', { text: x.name }), h('span', { class: 'tiny muted', text: (x.role === 'admin' ? '관리자' : '선생님') + (x.status === '활성' ? '' : ' · 퇴직 ' + (x.retiredAt || '')) })),
+        actions);
+    });
+    box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '계정 목록' }), h('div', { class: 'list' }, rows),
+      h('p', { class: 'tiny muted', text: '퇴직 처리해도 지난 정산 기록은 그대로 남습니다. 퇴직한 선생님은 로그인할 수 없습니다.' })));
+    return box;
+  }
+  function pinResetSheet(x) {
+    var body = h('div', { class: 'stack' }), err = errBox(), sh;
+    var go = h('button', { class: 'btn primary block', type: 'button' }, '새 비밀번호 만들기');
+    body.appendChild(h('p', { text: x.name + ' 님의 새 비밀번호를 만듭니다. 예전 비밀번호로는 로그인할 수 없게 됩니다.' }));
+    go.addEventListener('click', function () {
+      busyBtn(go, function () {
+        return api('admin.setPin', { acctId: x.id }).then(function (r) {
+          body.textContent = '';
+          body.appendChild(pinListBox([{ name: r.name, pin: r.pin }], '새 비밀번호'));
+        });
+      }).catch(function (e) { showErr(err, errText(e)); });
+    });
+    body.appendChild(err); body.appendChild(go);
+    sh = openSheet('비밀번호 재설정', body);
+  }
+  function renameSheet(x) {
+    var inp = h('input', { type: 'text', maxlength: '30', value: x.name }), err = errBox(), sh;
+    inp.value = x.name;
+    var go = h('button', { class: 'btn primary block', type: 'button' }, '이름 바꾸기');
+    go.addEventListener('click', function () { busyBtn(go, function () { return api('admin.rename', { acctId: x.id, name: inp.value }).then(function () { sh.close(); toast('이름을 바꿨어요.'); loadAdmin(); }); }).catch(function (e) { showErr(err, errText(e)); }); });
+    sh = openSheet('이름 변경', h('div', { class: 'stack' }, field('새 이름', inp), err, go));
+  }
+  function retireSheet(x) {
+    var err = errBox(), sh;
+    var go = h('button', { class: 'btn danger block', type: 'button' }, '퇴직 처리');
+    go.addEventListener('click', function () { busyBtn(go, function () { return api('admin.retire', { acctId: x.id }).then(function () { sh.close(); toast(x.name + ' 선생님을 퇴직 처리했어요.'); loadAdmin(); }); }).catch(function (e) { showErr(err, errText(e)); }); });
+    sh = openSheet('퇴직 처리', h('div', { class: 'stack' },
+      h('p', { text: x.name + ' 선생님을 퇴직 처리할까요?' }),
+      h('p', { class: 'small muted', text: '더 이상 로그인할 수 없고, 선생님 목록에서 사라집니다. 지난 정산 기록은 그대로 남고, 실수라면 [다시 근무]로 되돌릴 수 있어요.' }), err, go));
+  }
+
+  // ----- 단가 -----
+  function rateText(type, rate) {
+    if (!rate) return '미설정';
+    if (type.mode === 'fixed') return rate.fixed === null ? '미설정' : won(rate.fixed);
+    var t = rate.tiers.map(function (v) { return v === null ? '–' : Math.round(v / 1000) / 10 + (v % 1000 ? '' : ''); });
+    var any = rate.tiers.some(function (v) { return v !== null; });
+    return any ? t.join(' / ') + '만' : '미설정';
+  }
+  function adminRates() {
+    var a = S.a, d = a.rates, box = h('div', { class: 'stack' });
+    if (!a.rateTarget) a.rateTarget = '*';
+    var activeTypes = d.types.filter(function (t) { return t.active; });
+    var sel = h('select', { 'aria-label': '단가를 입력할 대상', onchange: function () { a.rateTarget = sel.value; render(); } },
+      h('option', { value: '*', text: '모든 선생님 기본 단가' }), d.teachers.map(function (t) { return h('option', { value: t.id, text: t.name + ' 선생님만 따로' }); }));
+    sel.value = a.rateTarget;
+    var isDefault = a.rateTarget === '*';
+    box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '단가 입력' }),
+      h('p', { class: 'small muted', text: isDefault ? '기본 단가는 모든 선생님에게 적용됩니다. 선생님마다 다르면 아래에서 그 선생님만 따로 입력하세요.' : '비워 두면 기본 단가를 따릅니다. 이 선생님만 다를 때만 입력하세요.' }),
+      sel));
+    var tc = ['1명', '2명', '3명', '4명', '5명 이상'];
+    activeTypes.forEach(function (t) {
+      var own = null, def = null;
+      d.rates.forEach(function (r) { if (r.typeId === t.id) { if (r.acctId === a.rateTarget) own = r; if (r.acctId === '*') def = r; } });
+      var inputs = [], err = errBox();
+      var card = h('div', { class: 'card ratecard' });
+      card.appendChild(h('div', { class: 'row' }, h('h3', { class: 'grow', text: t.name }), h('span', { class: 'tag', text: t.mode === 'fixed' ? '1회 금액' : '인원별' })));
+      function mk(label, ownVal, defVal) {
+        var inp = h('input', { type: 'text', inputmode: 'numeric', placeholder: !isDefault && defVal !== '' && defVal !== undefined && defVal !== null ? '기본 ' + Number(defVal).toLocaleString('ko-KR') : '원', 'aria-label': t.name + ' ' + label });
+        inp.value = ownVal === '' || ownVal === undefined || ownVal === null ? '' : String(ownVal);
+        inputs.push(inp);
+        return field(label, inp);
+      }
+      if (t.mode === 'fixed') card.appendChild(mk('1회 수업료 (원)', own ? own.fixed : '', def ? def.fixed : ''));
+      else card.appendChild(h('div', { class: 'tiers' }, tc.map(function (lab, i) { var k = 't' + (i + 1); return mk(lab, own ? own[k] : '', def ? def[k] : ''); })));
+      var hasOwn = own && ['fixed', 't1', 't2', 't3', 't4', 't5'].some(function (k) { return own[k] !== '' && own[k] !== null && own[k] !== undefined; });
+      if (isDefault && !hasOwn) card.appendChild(h('div', { class: 'note', text: '아직 단가가 없습니다. 입력하기 전까지 이 수업은 "단가 미설정"으로 표시됩니다.' }));
+      var save = h('button', { class: 'btn primary', type: 'button' }, '저장');
+      save.addEventListener('click', function () {
+        showErr(err, '');
+        var vals = inputs.map(function (i) { return i.value.replace(/[,\s원]/g, ''); });
+        for (var q = 0; q < vals.length; q++) if (vals[q] !== '' && !/^\d+$/.test(vals[q])) return showErr(err, '금액은 숫자로만 입력해 주세요.');
+        var p = { acctId: a.rateTarget, typeId: t.id };
+        if (vals.every(function (v) { return v === ''; })) p.clear = true;
+        else if (t.mode === 'fixed') p.fixed = vals[0];
+        else p.tiers = vals;
+        busyBtn(save, function () { return api('admin.setRate', p).then(function () { toast(t.name + ' 단가를 저장했어요.'); loadAdmin(); }); }).catch(function (e) { showErr(err, errText(e)); });
+      });
+      card.appendChild(err); card.appendChild(save);
+      box.appendChild(card);
+    });
+
+    // 선생님별 현재 적용 단가 한눈에 보기
+    var rows = d.teachers.map(function (tc2) {
+      return h('tr', null, h('td', null, h('button', { class: 'namebtn', type: 'button', onclick: function () { a.rateTarget = tc2.id; render(); window.scrollTo(0, 0); } }, tc2.name)),
+        activeTypes.map(function (t) { return h('td', { class: 'n', text: rateText(t, R.resolveRate(d.rates, t, tc2.id)) }); }));
+    });
+    if (rows.length) box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '선생님별 적용 단가 한눈에 보기' }),
+      h('p', { class: 'tiny muted', text: '인원별 단가는 1명 / 2명 / 3명 / 4명 / 5명 이상 순서이며 단위는 만 원입니다. 이름을 누르면 그 선생님 단가를 고칠 수 있어요.' }),
+      h('div', { class: 'tablewrap' }, h('table', null, h('thead', null, h('tr', null, h('th', { text: '선생님' }), activeTypes.map(function (t) { return h('th', { class: 'n', text: t.name }); }))), h('tbody', null, rows)))));
+
+    // 수업 유형 관리
+    var tbox = h('div', { class: 'card stack' }, h('h2', { text: '수업 유형 관리' }),
+      h('p', { class: 'small muted', text: '새 수업 종류(예: 키즈 댄스)를 추가하면 선생님 입력 화면에 바로 나타납니다. 쓰지 않는 유형은 숨길 수 있어요.' }));
+    d.types.forEach(function (t) {
+      var nm = h('input', { type: 'text', maxlength: '20', 'aria-label': '유형 이름' }); nm.value = t.name;
+      var go = h('button', { class: 'btn small', type: 'button' }, '이름 저장');
+      go.addEventListener('click', function () { busyBtn(go, function () { return api('admin.setType', { id: t.id, name: nm.value, mode: t.mode, active: t.active }).then(function () { toast('저장했어요.'); loadAdmin(); }); }).catch(function (e) { toast(errText(e)); }); });
+      var tg = h('button', { class: 'btn small', type: 'button' }, t.active ? '숨기기' : '다시 사용');
+      tg.addEventListener('click', function () { busyBtn(tg, function () { return api('admin.setType', { id: t.id, name: t.name, mode: t.mode, active: !t.active }).then(function () { loadAdmin(); }); }).catch(function (e) { toast(errText(e)); }); });
+      tbox.appendChild(h('div', { class: 'row' }, h('div', { style: 'flex:1 1 160px;min-width:0' }, nm), h('span', { class: 'tag ' + (t.active ? '' : 'mute'), text: (t.mode === 'fixed' ? '1회 금액' : '인원별') + (t.active ? '' : ' · 숨김') }), go, tg));
+    });
+    var nn = h('input', { type: 'text', maxlength: '20', placeholder: '새 유형 이름', 'aria-label': '새 유형 이름' });
+    var mode = h('select', { 'aria-label': '금액 방식' }, h('option', { value: 'fixed', text: '1회 금액이 정해져 있음' }), h('option', { value: 'tiered', text: '인원수에 따라 금액이 달라짐' }));
+    var addT = h('button', { class: 'btn small primary', type: 'button' }, '유형 추가');
+    var terr = errBox();
+    addT.addEventListener('click', function () { showErr(terr, ''); busyBtn(addT, function () { return api('admin.setType', { name: nn.value, mode: mode.value }).then(function () { toast('추가했어요. 위에서 단가를 입력해 주세요.'); loadAdmin(); }); }).catch(function (e) { showErr(terr, errText(e)); }); });
+    tbox.appendChild(h('hr', { class: 'sep' }));
+    tbox.appendChild(nn); tbox.appendChild(mode); tbox.appendChild(terr); tbox.appendChild(addT);
+    box.appendChild(tbox);
+    return box;
+  }
+
+  function adminSettings() {
+    var a = S.a, s = a.settings, box = h('div', { class: 'stack' });
+    var endDay = h('input', { type: 'number', min: '1', max: '31', inputmode: 'numeric', 'aria-label': '정산 기간 마지막 날' }); endDay.value = String(s.endDay);
+    var tax = h('input', { type: 'text', inputmode: 'decimal', 'aria-label': '원천징수율' }); tax.value = String(Math.round(s.withholdingRate * 1000) / 10);
+    var err = errBox();
+    var save = h('button', { class: 'btn primary block', type: 'button' }, '저장');
+    save.addEventListener('click', function () {
+      showErr(err, '');
+      var pct = Number(String(tax.value).replace('%', ''));
+      if (!(pct >= 0 && pct <= 50)) return showErr(err, '원천징수율은 0~50 사이 숫자로 입력해 주세요.');
+      busyBtn(save, function () { return api('admin.setSettings', { endDay: Number(endDay.value), withholdingRate: pct / 100 }).then(function () { toast('저장했어요.'); S.a.overview = null; loadAdmin(); }); }).catch(function (e) { showErr(err, errText(e)); });
+    });
+    box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '정산 기준' }),
+      field('매달 정산 기간의 마지막 날 (현재 ' + s.endDay + '일)', endDay),
+      h('p', { class: 'tiny muted', text: '예: 29로 두면 "전월 30일 ~ 이번 달 29일" 수업이 한 달 정산입니다. 2월처럼 그 날이 없으면 말일까지입니다. 지급일은 다음 달 5일입니다. 마감한 기간이 생기면 이 값은 바꿀 수 없습니다.' }),
+      field('원천징수율 (%) — 0이면 표시하지 않음', tax),
+      h('p', { class: 'tiny muted', text: '프리랜서 사업소득 3.3%를 적용하려면 3.3을 입력하세요. 세무사님과 상의해 정해 주세요.' }),
+      err, save));
+    box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '데이터 보관' }),
+      h('p', { class: 'small', text: '모든 기록은 구글 시트에 쌓이고, 매일 새벽 자동 백업(최근 14개)이 만들어집니다. 마감한 달의 표를 세무사님께 보낸 뒤, 시트의 오래된 기록은 직접 지우셔도 됩니다.' })));
+    return box;
+  }
+
+  // ===== 그리기 =====
+  function render() {
+    var root = $('app');
+    root.textContent = '';
+    root.classList.toggle('wide', !!(S.session && S.session.role === 'admin'));
+    if (!S.session) root.appendChild(viewLogin());
+    else if (S.session.role === 'admin') root.appendChild(viewAdmin());
+    else root.appendChild(viewTeacher());
+  }
+
+  // ===== 시작 =====
+  (function boot() {
+    var raw = store(SESSION_KEY);
+    if (raw && !DEMO) {
+      try { var s = JSON.parse(raw); if (s && s.token && s.role) { S.session = s; S.tab = s.role === 'admin' ? 'overview' : 'entry'; S.a = {}; } } catch (e) { /* 무시 */ }
+    }
+    render();
+    if (S.session) loadSession(); else loadNames();
+  })();
+})();
+
+</script>
+
+</body>
+</html>
