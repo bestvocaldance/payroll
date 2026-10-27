@@ -218,6 +218,9 @@ hr.sep { border: 0; border-top: 1px solid var(--line); width: 100%; margin: 0; }
   .btn, .chip, .statuses button { transition: background-color .12s, border-color .12s; }
 }
 
+.grouphead { margin: 8px 2px 0; font-size: 1.05rem; }
+select:disabled { opacity: .6; }
+
 </style>
 
 </head>
@@ -295,16 +298,48 @@ var PayRules = (function () {
     if (!isFinite(n) || n < 0) return null;
     return Math.round(n);
   }
-  function tierIndex(n) {
+  var DEFAULT_BANDS = [1, 2, 3, 4, 5]; // 구간의 시작 인원: 1명, 2명, 3명, 4명, 5명 이상
+  // 인원 구간 정리: 오름차순, 1에서 시작, 최대 5개
+  function cleanBands(b) {
+    var out = [], i, n;
+    if (!Array.isArray(b)) return DEFAULT_BANDS.slice();
+    for (i = 0; i < b.length; i++) {
+      n = Math.floor(Number(b[i]));
+      if (isFinite(n) && n >= 1 && n <= 50 && (out.length === 0 || n > out[out.length - 1])) out.push(n);
+    }
+    if (!out.length || out[0] !== 1) return DEFAULT_BANDS.slice();
+    return out.slice(0, 5);
+  }
+  function parseBands(v) {
+    if (Array.isArray(v)) return cleanBands(v);
+    var t = String(v === null || v === undefined ? '' : v).trim();
+    if (!t) return DEFAULT_BANDS.slice();
+    return cleanBands(t.split(/[^0-9]+/).filter(function (x) { return x !== ''; }).map(Number));
+  }
+  // 구간 이름: [1,4,7] → ["3명 이하","4~6명","7명 이상"]
+  function bandLabels(bands) {
+    var b = cleanBands(bands), out = [], i, lo, hi;
+    for (i = 0; i < b.length; i++) {
+      lo = b[i]; hi = i + 1 < b.length ? b[i + 1] - 1 : null;
+      if (hi === null) out.push(lo + '명 이상');
+      else if (lo === hi) out.push(lo + '명');
+      else if (i === 0) out.push(hi + '명 이하');
+      else out.push(lo + '~' + hi + '명');
+    }
+    return out;
+  }
+  // 인원수가 속한 구간 번호(0부터)
+  function tierIndex(n, bands) {
     n = Math.floor(n);
-    if (n <= 1) return 0;
-    if (n >= 5) return 4;
-    return n - 1;
+    var b = cleanBands(bands), idx = 0, i;
+    for (i = 0; i < b.length; i++) if (n >= b[i]) idx = i;
+    return idx;
   }
   function makeRate(type, row) {
     if (!type || !row) return null;
     return {
       mode: type.mode === 'tiered' ? 'tiered' : 'fixed',
+      bands: cleanBands(type.bands),
       fixed: toIntOrNull(row.fixed),
       tiers: [toIntOrNull(row.t1), toIntOrNull(row.t2), toIntOrNull(row.t3), toIntOrNull(row.t4), toIntOrNull(row.t5)]
     };
@@ -337,7 +372,7 @@ var PayRules = (function () {
     }
     var n = Math.floor(Number(headcount));
     if (!(n >= 1)) return { amount: null, pay: true, reason: 'need_headcount' };
-    var t = rate.tiers[tierIndex(n)];
+    var t = rate.tiers[tierIndex(n, rate.bands)];
     if (t === null || t === undefined) return { amount: null, pay: true, reason: 'no_rate' };
     return { amount: t, pay: true, reason: '' };
   }
@@ -357,7 +392,7 @@ var PayRules = (function () {
     parseDate: parseDate, addDays: addDays, validKey: validKey,
     prevKey: prevKey, nextKey: nextKey, cleanEndDay: cleanEndDay,
     periodEnd: periodEnd, periodRange: periodRange, periodKeyOf: periodKeyOf, payDate: payDate,
-    tierIndex: tierIndex, resolveRate: resolveRate, calcLesson: calcLesson, fmtWon: fmtWon, lastDay: lastDay
+    tierIndex: tierIndex, cleanBands: cleanBands, parseBands: parseBands, bandLabels: bandLabels, DEFAULT_BANDS: DEFAULT_BANDS, resolveRate: resolveRate, calcLesson: calcLesson, fmtWon: fmtWon, lastDay: lastDay
   };
 })();
 
@@ -662,9 +697,28 @@ var PayRules = (function () {
     dateIn.value = st.date;
     dateIn.addEventListener('change', function () { st.date = dateIn.value; });
 
-    var typeBtns = f.types.map(function (t) {
-      return h('button', { class: 'chip', type: 'button', 'aria-pressed': 'false', onclick: function () { st.typeId = t.id; refresh(); } }, t.name.indexOf('-') > 0 ? t.name.split('-').slice(1).join('-') : t.name);
-    });
+    function groupOf(t) { return t.group || '기타'; }
+    var groupNames = [];
+    ['보컬과', '악기과', '댄스과'].forEach(function (g) { if (f.types.some(function (t) { return groupOf(t) === g; })) groupNames.push(g); });
+    f.types.forEach(function (t) { if (groupNames.indexOf(groupOf(t)) < 0) groupNames.push(groupOf(t)); });
+    var curT0 = null; f.types.forEach(function (t) { if (t.id === st.typeId) curT0 = t; });
+    st.group = curT0 ? groupOf(curT0) : (groupNames.length === 1 ? groupNames[0] : '');
+    var groupSel = h('select', { 'aria-label': '과' });
+    var typeSel = h('select', { 'aria-label': '수업 종류' });
+    function fillTypes() {
+      typeSel.textContent = '';
+      typeSel.appendChild(h('option', { value: '', text: st.group ? '수업 종류를 고르세요' : '먼저 과를 고르세요' }));
+      f.types.forEach(function (t) { if (groupOf(t) === st.group) typeSel.appendChild(h('option', { value: t.id, text: t.name })); });
+      typeSel.disabled = !st.group;
+      typeSel.value = st.typeId;
+      if (typeSel.value !== st.typeId) { st.typeId = ''; typeSel.value = ''; }
+    }
+    groupSel.appendChild(h('option', { value: '', text: '과를 고르세요' }));
+    groupNames.forEach(function (g) { groupSel.appendChild(h('option', { value: g, text: g })); });
+    groupSel.value = st.group;
+    groupSel.addEventListener('change', function () { st.group = groupSel.value; st.typeId = ''; st.hc = 0; fillTypes(); refresh(); });
+    typeSel.addEventListener('change', function () { st.typeId = typeSel.value; st.hc = 0; refresh(); });
+    var bandInfo = h('p', { class: 'tiny muted' });
     var hcOut = h('output', { 'aria-live': 'polite' }, '0');
     var hcBox = h('div', { class: 'stack' },
       h('div', { class: 'small muted', text: '출석한 학생 수' }),
@@ -688,9 +742,15 @@ var PayRules = (function () {
     function curStatus() { var r = null; f.statuses.forEach(function (s) { if (s.name === st.status) r = s; }); return r; }
     function refresh() {
       var t = curType(), s = curStatus();
-      typeBtns.forEach(function (b, i) { b.setAttribute('aria-pressed', f.types[i].id === st.typeId ? 'true' : 'false'); });
       statusBtns.forEach(function (b, i) { b.setAttribute('aria-pressed', f.statuses[i].name === st.status ? 'true' : 'false'); });
       hcBox.hidden = !(t && t.mode === 'tiered');
+      bandInfo.textContent = '';
+      if (t && t.mode === 'tiered' && t.rate) {
+        var parts = [];
+        t.bandLabels.forEach(function (lab, i) { var v = t.rate.tiers[i]; parts.push(lab + ' ' + (v === null || v === undefined ? '미설정' : won(v))); });
+        bandInfo.textContent = '인원별 급여: ' + parts.join(' · ');
+      }
+      bandInfo.hidden = !bandInfo.textContent;
       hcOut.textContent = st.hc ? st.hc + '명' : '0명';
       noteEl.textContent = s ? s.note : '';
       noteEl.hidden = !s;
@@ -724,15 +784,11 @@ var PayRules = (function () {
     });
 
     root.appendChild(field('수업한 날', dateIn));
-    var groupNames = [], groupBoxes = {};
-    f.types.forEach(function (t, i) {
-      var g = t.name.indexOf('-') > 0 ? t.name.split('-')[0] : '기타';
-      if (!groupBoxes[g]) { groupBoxes[g] = h('div', { class: 'chips' }); groupNames.push(g); }
-      groupBoxes[g].appendChild(typeBtns[i]);
-    });
+    fillTypes();
     root.appendChild(h('div', { class: 'stack' }, h('div', { class: 'small muted', text: '수업 종류' }),
-      groupNames.map(function (g) { return h('div', { class: 'stack', style: 'gap:6px' }, h('div', { class: 'tiny', style: 'font-weight:700', text: g }), groupBoxes[g]); })));
+      groupNames.length > 1 ? groupSel : null, typeSel));
     root.appendChild(hcBox);
+    root.appendChild(bandInfo);
     root.appendChild(h('div', { class: 'stack' }, h('div', { class: 'small muted', text: '수업 결과' }), h('div', { class: 'statuses' }, statusBtns), noteEl));
     root.appendChild(amountEl);
     root.appendChild(field('메모 (선택)', memoIn));
@@ -1315,8 +1371,9 @@ var PayRules = (function () {
   function rateText(type, rate) {
     if (!rate) return '미설정';
     if (type.mode === 'fixed') return rate.fixed === null ? '미설정' : won(rate.fixed);
-    var t = rate.tiers.map(function (v) { return v === null ? '–' : Math.round(v / 1000) / 10 + (v % 1000 ? '' : ''); });
-    var any = rate.tiers.some(function (v) { return v !== null; });
+    var n = (type.bands || [1, 2, 3, 4, 5]).length, vals = rate.tiers.slice(0, n);
+    var t = vals.map(function (v) { return v === null ? '–' : Math.round(v / 1000) / 10; });
+    var any = vals.some(function (v) { return v !== null; });
     return any ? t.join(' / ') + '만' : '미설정';
   }
   function adminRates() {
@@ -1330,8 +1387,27 @@ var PayRules = (function () {
     box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '수업별 급여 입력' }),
       h('p', { class: 'small muted', text: isDefault ? '기본 수업 급여는 모든 선생님에게 적용됩니다. 선생님마다 다르면 아래에서 그 선생님만 따로 입력하세요.' : '비워 두면 기본 수업 급여를 따릅니다. 이 선생님만 다를 때만 입력하세요.' }),
       sel));
-    var tc = ['1명', '2명', '3명', '4명', '5명 이상'];
-    activeTypes.forEach(function (t) {
+    // 표준 수업료 표 적용
+    var catErr = errBox();
+    var catBtn = h('button', { class: 'btn primary block', type: 'button' }, '학원 표준 수업료 표 적용하기');
+    catBtn.addEventListener('click', function () {
+      var go = h('button', { class: 'btn primary block', type: 'button' }, '네, 적용합니다'), er2 = errBox(), sh;
+      go.addEventListener('click', function () {
+        busyBtn(go, function () { return api('admin.applyCatalog', {}).then(function (r) { sh.close(); toast('수업 종류 ' + r.total + '개와 기본 급여를 적용했어요.'); loadAdmin(); }); }).catch(function (e) { showErr(er2, errText(e)); });
+      });
+      sh = openSheet('표준 수업료 표 적용', h('div', { class: 'stack' },
+        h('p', { text: '보컬과·악기과·댄스과의 수업 종류 25개와 "모든 선생님 기본 수업 급여"를 학원 수업료 표대로 넣습니다.' }),
+        h('ul', { class: 'small' }, h('li', { text: '같은 이름의 수업은 기본 급여가 표의 금액으로 바뀝니다. (선생님별로 따로 넣은 금액은 그대로입니다.)' }),
+          h('li', { text: '예전 기본 수업 종류(보컬-취미 등)는 선생님 입력 화면에서 숨겨집니다. 이미 입력된 기록은 그대로 남습니다.' }),
+          h('li', { text: '여러 번 눌러도 같은 결과입니다.' })), er2, go));
+    });
+    var hasCatalog = activeTypes.some(function (t) { return !!t.group; });
+    box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '표준 수업료 표' }),
+      h('p', { class: 'small muted', text: hasCatalog ? '표준 표가 적용되어 있습니다. 금액을 바꾸면 아래 카드에서 고치세요. 표를 다시 적용하면 기본 급여가 표의 금액으로 되돌아갑니다.' : '학원 수업료 표(보컬과·악기과·댄스과)를 한 번에 넣을 수 있어요.' }), catErr, catBtn));
+    activeTypes.forEach(function (t, ti) {
+      var tc = t.bandLabels || ['1명', '2명', '3명', '4명', '5명 이상'];
+      if (t.group && (ti === 0 || activeTypes[ti - 1].group !== t.group)) box.appendChild(h('h2', { class: 'grouphead', text: t.group }));
+
       var own = null, def = null;
       d.rates.forEach(function (r) { if (r.typeId === t.id) { if (r.acctId === a.rateTarget) own = r; if (r.acctId === '*') def = r; } });
       var inputs = [], err = errBox();
@@ -1368,7 +1444,7 @@ var PayRules = (function () {
         activeTypes.map(function (t) { return h('td', { class: 'n', text: rateText(t, R.resolveRate(d.rates, t, tc2.id)) }); }));
     });
     if (rows.length) box.appendChild(h('div', { class: 'card stack' }, h('h2', { text: '선생님별 수업 급여 한눈에 보기' }),
-      h('p', { class: 'tiny muted', text: '인원별 급여는 1명 / 2명 / 3명 / 4명 / 5명 이상 순서이며 단위는 만 원입니다. 이름을 누르면 그 선생님 수업별 급여를 고칠 수 있어요.' }),
+      h('p', { class: 'tiny muted', text: '인원별 급여는 수업마다 정해진 인원 구간 순서(예: 4명 이하 / 5명 이상)이며 단위는 만 원입니다. 이름을 누르면 그 선생님 수업별 급여를 고칠 수 있어요.' }),
       h('div', { class: 'tablewrap' }, h('table', null, h('thead', null, h('tr', null, h('th', { text: '선생님' }), activeTypes.map(function (t) { return h('th', { class: 'n', text: t.name }); }))), h('tbody', null, rows)))));
 
     // 수업 유형 관리
@@ -1380,15 +1456,16 @@ var PayRules = (function () {
       go.addEventListener('click', function () { busyBtn(go, function () { return api('admin.setType', { id: t.id, name: nm.value, mode: t.mode, active: t.active }).then(function () { toast('저장했어요.'); loadAdmin(); }); }).catch(function (e) { toast(errText(e)); }); });
       var tg = h('button', { class: 'btn small', type: 'button' }, t.active ? '숨기기' : '다시 사용');
       tg.addEventListener('click', function () { busyBtn(tg, function () { return api('admin.setType', { id: t.id, name: t.name, mode: t.mode, active: !t.active }).then(function () { loadAdmin(); }); }).catch(function (e) { toast(errText(e)); }); });
-      tbox.appendChild(h('div', { class: 'row' }, h('div', { style: 'flex:1 1 160px;min-width:0' }, nm), h('span', { class: 'tag ' + (t.active ? '' : 'mute'), text: (t.mode === 'fixed' ? '1회 금액' : '인원별') + (t.active ? '' : ' · 숨김') }), go, tg));
+      tbox.appendChild(h('div', { class: 'row' }, h('div', { style: 'flex:1 1 160px;min-width:0' }, nm), h('span', { class: 'tag ' + (t.active ? '' : 'mute'), text: (t.group ? t.group + ' · ' : '') + (t.mode === 'fixed' ? '1회 금액' : '인원별') + (t.active ? '' : ' · 숨김') }), go, tg));
     });
     var nn = h('input', { type: 'text', maxlength: '20', placeholder: '새 유형 이름', 'aria-label': '새 유형 이름' });
     var mode = h('select', { 'aria-label': '금액 방식' }, h('option', { value: 'fixed', text: '1회 금액이 정해져 있음' }), h('option', { value: 'tiered', text: '인원수에 따라 금액이 달라짐' }));
+    var grp = h('select', { 'aria-label': '과' }, h('option', { value: '', text: '과 없음(기타)' }), ['보컬과', '악기과', '댄스과'].map(function (g) { return h('option', { value: g, text: g }); }));
     var addT = h('button', { class: 'btn small primary', type: 'button' }, '유형 추가');
     var terr = errBox();
-    addT.addEventListener('click', function () { showErr(terr, ''); busyBtn(addT, function () { return api('admin.setType', { name: nn.value, mode: mode.value }).then(function () { toast('추가했어요. 위에서 수업별 급여를 입력해 주세요.'); loadAdmin(); }); }).catch(function (e) { showErr(terr, errText(e)); }); });
+    addT.addEventListener('click', function () { showErr(terr, ''); busyBtn(addT, function () { return api('admin.setType', { name: nn.value, mode: mode.value, group: grp.value }).then(function () { toast('추가했어요. 위에서 수업별 급여를 입력해 주세요.'); loadAdmin(); }); }).catch(function (e) { showErr(terr, errText(e)); }); });
     tbox.appendChild(h('hr', { class: 'sep' }));
-    tbox.appendChild(nn); tbox.appendChild(mode); tbox.appendChild(terr); tbox.appendChild(addT);
+    tbox.appendChild(nn); tbox.appendChild(grp); tbox.appendChild(mode); tbox.appendChild(terr); tbox.appendChild(addT);
     box.appendChild(tbox);
     return box;
   }
