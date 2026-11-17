@@ -487,7 +487,9 @@ var PayRules = (function () {
     if (!CFG.apiUrl) return Promise.reject(Object.assign(new Error('서버 주소가 아직 연결되지 않았습니다. 원장님께 알려 주세요.'), { code: 'config' }));
     var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 30000);
-    return fetch(CFG.apiUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined, redirect: 'follow' })
+    var hdr = { 'Content-Type': 'text/plain;charset=utf-8' };
+    if (CFG.anonKey) { hdr['Authorization'] = 'Bearer ' + CFG.anonKey; hdr['apikey'] = CFG.anonKey; }
+    return fetch(CFG.apiUrl, { method: 'POST', headers: hdr, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined, redirect: 'follow' })
       .then(function (r) { return r.json(); })
       .then(function (j) { clearTimeout(timer); return j; }, function () {
         clearTimeout(timer);
